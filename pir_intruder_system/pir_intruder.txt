@@ -1,0 +1,75 @@
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
+
+#define NUMBER +2347089999808
+#define GSM_SERIAL Serial
+
+#define PIR 11
+#define RELAY 12
+
+bool sms_sent = false;
+
+void setup() {
+  // put your setup code here, to run once:
+  GSM_SERIAL.begin(9600);
+  pinMode(PIR, INPUT);
+  pinMode(RELAY, OUTPUT);
+  lcd.begin(16, 2);
+
+  lcd.print(F(Design and));
+  lcd.setCursor(0, 1);
+  lcd.print(F(construction));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F(of intruder));
+  lcd.setCursor(0, 1);
+  lcd.print(F(detection system));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F(with GSM));
+  lcd.setCursor(0, 1);
+  lcd.print(F(feedback));
+  delay(3000);
+  lcd.clear();
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  int value = digitalRead(PIR);
+
+  if (sms_sent && value) return;
+
+  if (value) {
+    lcd.setCursor(0, 0);
+    lcd.print(F(Intruder ));
+    lcd.setCursor(0, 1);
+    lcd.print(F(Detected));
+    digitalWrite(RELAY, HIGH);
+    sms_sent = true;
+    send_sms(Intruder Detectedyarn add google-auth-library!, NUMBER);
+    delay(1000);
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print(F(Intruder Not ));
+    lcd.setCursor(0, 1);
+    lcd.print(F(Detected));
+    digitalWrite(RELAY, LOW);
+    sms_sent = false;
+  }
+}
+
+void send_sms(const char *sms_data, const char *number) {
+  GSM_SERIAL.println(AT+CMGF=1);
+  delay(1000);
+  char num_data[26];
+  sprintf(num_data, AT+CMGS="%s", number);
+  GSM_SERIAL.println(num_data);
+  delay(1000);
+  GSM_SERIAL.print(sms_data);
+  delay(1000);
+  GSM_SERIAL.write(26);
+  delay(1000);
+}
