@@ -123,9 +123,9 @@ void loop() {
 
   if (currentMillis - prevMillis > 5000) {
     sensorsOne.requestTemperatures();
-    sensorsTwo.requestTemperatures();
+//    sensorsTwo.requestTemperatures();/
     tempCOne = sensorsOne.getTempCByIndex(0);
-    tempCTwo = sensorsTwo.getTempCByIndex(0);
+//    tempCTwo = sensorsTwo.getTempCByInde/x(0);
 
     humdOneValue = dhtOne.readHumidity();
     humdTwoValue = dhtTwo.readHumidity();
@@ -142,7 +142,7 @@ void loop() {
       lcd.print(tempCOne);
       lcd.setCursor(0, 1);
       lcd.print(F("Temp 2: "));
-      lcd.print(tempCTwo);
+      lcd.print(tempCOne);
       lcd.setCursor(0, 2);
       lcd.print(F("L1:"));
       lcd.print(lightOneValue);
@@ -175,7 +175,7 @@ void loop() {
 void send_data() {
   lcd.clear();
   lcd.print(F("Sending data"));
-  String sendData = "GET /update?api_key=" myAPI "&field1=" + String(lightOneValue) + "&field2=" + String(lightTwoValue) + "&field3=" + String(humdOneValue) + "&field4=" + String(humdTwoValue) + "&field5=" + String(tempCOne) + "&field6=" + String(tempCTwo) + "&field7=" + String(moistureOneValue) + "&field8=" + String(moistureTwoValue);
+  String sendData = "GET /update?api_key=" myAPI "&field1=" + String(lightOneValue) + "&field2=" + String(lightTwoValue) + "&field3=" + String(humdOneValue) + "&field4=" + String(humdTwoValue) + "&field5=" + String(tempCOne) + "&field6=" + String(tempCOne) + "&field7=" + String(moistureOneValue) + "&field8=" + String(moistureTwoValue);
   espData("AT+CIPMUX=1", 1000);  // Allow multiple connections
   espData("AT+CIPSTART=0,\"TCP\",\"" myHOST "\",80", 1000);
   espData("AT+CIPSEND=0," + String(sendData.length() + 4), 1000);
