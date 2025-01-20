@@ -34,9 +34,9 @@ struct Voter {
 #define NUM_OF_VOTERS 3
 
 Voter voters[NUM_OF_VOTERS] = {
-  Voter{ .cardId = B3267A06, .name = John },
-  Voter{ .cardId = 938F8D03, .name = Musa },
-  Voter{ .cardId = D06EFF58, .name = Ibrahim }
+  Voter{ .cardId = 03D614C5, .name = John },
+  Voter{ .cardId = D1230609, .name = Musa },
+  Voter{ .cardId = A0C02F53, .name = Ibrahim }
 };
 
 String scannedCard = ;
@@ -49,6 +49,36 @@ void setup() {
   SPI.begin();
   // Init MFRC522
   rfid.PCD_Init();
+
+  lcd.print(F(Design and));
+  lcd.setCursor(0, 1);
+  lcd.print(F(construction));
+  delay(3000);
+  lcd.clear();
+  
+  lcd.print(F(of solar powered));
+  lcd.setCursor(0, 1);
+  lcd.print(F(microcontroller));
+  delay(3000);
+  lcd.clear();
+  
+  lcd.print(F(electronics));
+  lcd.setCursor(0, 1);
+  lcd.print(F(voting machine));
+  delay(3000);
+  lcd.clear();
+  
+  lcd.print(F(Manu D.Ndirmbula));
+  lcd.setCursor(0, 1);
+  lcd.print(F(19/05/05/223));
+  delay(3000);
+  lcd.clear();
+  
+  lcd.print(F(Supervised by));
+  lcd.setCursor(0, 1);
+  lcd.print(F(Engr.Ibrahim Tijjan));
+  delay(3000);
+  lcd.clear();
 }
 
 void loop() {
