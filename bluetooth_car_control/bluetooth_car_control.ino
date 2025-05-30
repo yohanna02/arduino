@@ -30,8 +30,8 @@ void setup() {
   BLUETOOTH_SERIAL.begin(9600);
 
   // Set default motor speeds
-  analogWrite(ENA, 120);  // Full speed for Motor A
-  analogWrite(ENB, 120);  // Full speed for Motor B
+  analogWrite(ENA, 200);  // Full speed for Motor A
+  analogWrite(ENB, 200);  // Full speed for Motor B
 
   Serial.begin(9600);  // Debugging on serial monitor
   Serial.println("Bluetooth Car Robot Ready");

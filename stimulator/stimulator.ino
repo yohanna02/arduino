@@ -5,10 +5,10 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define BTN_1 10
 #define BTN_2 12
 
-#define PROTOCOL_OUT_ONE 6
-#define PROTOCOL_OUT_TWO 7
-#define PROTOCOL_OUT_THREE 8
-#define PROTOCOL_OUT_FOUR 9
+#define PROTOCOL_OUT_ONE 8
+#define PROTOCOL_OUT_TWO 9
+#define PROTOCOL_OUT_THREE 6
+#define PROTOCOL_OUT_FOUR 7
 
 #define STIMULATOR 11
 
@@ -35,6 +35,30 @@ void setup() {
 
   lcd.init();
   lcd.backlight();
+
+  lcd.print(F("DEVELOPMENT OF"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("SMART NEUROMUSCULAR"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("STIMULATOR EMBEDDED"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("WITH MASSAGER"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("ANIKENE MOSESROCK OFOBUISI"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("PG/ESUT/2023070000075"));
+  delay(3000);
+  lcd.clear();
+
+//  lcd.print(F("Supervised by"));
+//  lcd.setCursor(0, 1);
+//  lcd.print(F("ENGR DR OKOYE J.O"));
+//  delay(3000);
+//  lcd.clear();
 }
 
 void loop() {

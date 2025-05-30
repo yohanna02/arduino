@@ -1,5 +1,5 @@
-const int EN_pin = 6;       // PWM pin controlling speed
-const int PH_pin = 5;        // Digital pin controlling polarity
+const int EN_pin = 9;       // PWM pin controlling speed
+const int PH_pin = 10;        // Digital pin controlling polarity
 const int pwmVal = 128;      // 50% duty cycle (range 0–255)
 
 const unsigned long posDuration = 100;  // Positive phase duration in ms

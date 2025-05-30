@@ -15,25 +15,25 @@
 //   { '7', '8', '9' },
 //   { '*', '0', '#' }
 // };
-// byte rowPins[ROWS] = { 2, A0, A1, A3 };  //connect to the row pinouts of the keypad
-// byte colPins[COLS] = { A2, 3, 4 };       //connect to the column pinouts of the keypad
+// byte rowPins[ROWS] = { 4, 5, 6, 7 };  //connect to the row pinouts of the keypad
+// byte colPins[COLS] = { 8, 9, 10 };       //connect to the column pinouts of the keypad
 
 // Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // Define pins
-#define DHTPIN 1  // Pin connected to DHT11
+#define DHTPIN 2  // Pin connected to DHT11
 #define DHTTYPE DHT11
-#define BUZZER_PIN 13  // Pin connected to buzzer
+#define BUZZER_PIN 3  // Pin connected to buzzer
 
-#define FAN 5
-#define COMPRESSOR 6
+#define FAN 11
+#define COMPRESSOR 12
 
-#define LED_PIN_1 7   // Pin connected to LED
-#define LED_PIN_2 8   // Pin connected to LED
-#define LED_PIN_3 9   // Pin connected to LED
-#define LED_PIN_4 10  // Pin connected to LED
-#define LED_PIN_5 11  // Pin connected to LED
-#define LED_PIN_6 12  // Pin connected to LED
+#define LED_PIN_1 A0   // Pin connected to LED
+#define LED_PIN_2 A1   // Pin connected to LED
+#define LED_PIN_3 A2   // Pin connected to LED
+#define LED_PIN_4 A3  // Pin connected to LED
+#define LED_PIN_5 13//  // Pin connected to LED
+//#define LED_PIN_6 12/  // Pin connected to LED
 
 // Initialize DHT sensor and LCD
 DHT dht(DHTPIN, DHTTYPE);
@@ -117,7 +117,7 @@ void setup() {
   pinMode(LED_PIN_3, OUTPUT);
   pinMode(LED_PIN_4, OUTPUT);
   pinMode(LED_PIN_5, OUTPUT);
-  pinMode(LED_PIN_6, OUTPUT);
+  //  pinMode(LED_PIN_6, OUTPUT);/
 
   pinMode(FAN, OUTPUT);
   pinMode(COMPRESSOR, OUTPUT);
@@ -142,14 +142,18 @@ void setup() {
 
 void toggleLed() {
   digitalWrite(BUZZER_PIN, HIGH);
-  for (int i = LED_PIN_1; i <= LED_PIN_6; i++) {
-    digitalWrite(i, HIGH);
-  }
+  digitalWrite(LED_PIN_1, HIGH);
+  digitalWrite(LED_PIN_2, HIGH);
+  digitalWrite(LED_PIN_3, HIGH);
+  digitalWrite(LED_PIN_4, HIGH);
+  digitalWrite(LED_PIN_5, HIGH);
   delay(100);  // Beep duration
   digitalWrite(BUZZER_PIN, LOW);
-  for (int i = LED_PIN_1; i <= LED_PIN_6; i++) {
-    digitalWrite(i, LOW);
-  }
+  digitalWrite(LED_PIN_1, LOW);
+  digitalWrite(LED_PIN_2, LOW);
+  digitalWrite(LED_PIN_3, LOW);
+  digitalWrite(LED_PIN_4, LOW);
+  digitalWrite(LED_PIN_5, LOW);
 }
 
 void loop() {
