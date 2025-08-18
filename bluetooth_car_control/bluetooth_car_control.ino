@@ -1,101 +1,154 @@
-// Define motor driver pins
-#define ENA 6   // Enable pin for Motor A
-#define IN1 A0   // Control pin 1 for Motor A
-#define IN2 A1   // Control pin 2 for Motor A
-#define ENB 5  // Enable pin for Motor B
-#define IN3 A2   // Control pin 1 for Motor B
-#define IN4 A3   // Control pin 2 for Motor B
-
-// Bluetooth communication
-#define RX 2  // Bluetooth module RX pin
-#define TX 3  // Bluetooth module TX pin
-
 #include <SoftwareSerial.h>
-SoftwareSerial Bluetooth(RX, TX);
 
-#define BLUETOOTH_SERIAL Bluetooth
+SoftwareSerial esp_serial(2, 3);
 
+#define _serial esp_serial
+
+// Motor pins
+int motorA1 = 8;
+int motorA2 = 7;
+int motorB1 = 6;
+int motorB2 = 5;
+
+int ENA = 10;
+int ENB = 9;
+
+// Ultrasonic pins
+int trigPin = 11;
+int echoPin = 12;
+
+// Variables
 char command;
+char lastCommand = 'S'; // 'S' for stop
+long duration;
+int distance;
+const int safeDistance = 20; // in cm
 
 void setup() {
-  // Set motor driver pins as output
+  _serial.begin(9600);
+
+  // Motor pins
+  pinMode(motorA1, OUTPUT);
+  pinMode(motorA2, OUTPUT);
+  pinMode(motorB1, OUTPUT);
+  pinMode(motorB2, OUTPUT);
+
   pinMode(ENA, OUTPUT);
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
   pinMode(ENB, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
 
-  // Initialize Bluetooth communication
-  BLUETOOTH_SERIAL.begin(9600);
+  // Ultrasonic pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
 
-  // Set default motor speeds
-  analogWrite(ENA, 200);  // Full speed for Motor A
-  analogWrite(ENB, 200);  // Full speed for Motor B
-
-  Serial.begin(9600);  // Debugging on serial monitor
-  Serial.println("Bluetooth Car Robot Ready");
+  Stop();
 }
 
 void loop() {
-  if (BLUETOOTH_SERIAL.available()) {
-    command = BLUETOOTH_SERIAL.read();  // Read the command from the Bluetooth app
-    Serial.println(command);          // Print the command for debugging
+  // Read new command if available
+  if (_serial.available() > 0) {
+    command = _serial.read();
+    lastCommand = command;
   }
 
-  switch (command) {
-    case 'F':  // Forward
-      moveForward();
+  // Always check distance
+  distance = getDistance();
+
+  // If moving forward and obstacle appears
+  if (lastCommand == 'F' && distance <= safeDistance) {
+    Serial.println("Obstacle detected! Turning right...");
+    turnRightFor(500); // Turn right for 500ms
+    lastCommand = 'F'; // Continue moving forward after turning
+  } else {
+    // Continue executing last command
+    executeCommand(lastCommand);
+  }
+}
+
+// Execute stored command
+void executeCommand(char cmd) {
+  switch (cmd) {
+    case 'F':
+      forward();
       break;
-    case 'B':  // Backward
-      moveBackward();
+    case 'B':
+      back();
       break;
-    case 'L':  // Left
-      turnLeft();
+    case 'L':
+      left();
       break;
-    case 'R':  // Right
-      turnRight();
-      break;
-    case 'S':  // Stop
-      stopMotors();
+    case 'R':
+      right();
       break;
     default:
-      stopMotors();  // Stop if invalid command
+      Stop();
       break;
   }
 }
 
-void moveForward() {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
+// Ultrasonic distance measurement
+int getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH, 20000); // 20ms timeout
+  if (duration == 0) return 999; // No object detected
+
+  return duration * 0.034 / 2; // Convert to cm
 }
 
-void moveBackward() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
+// Motor functions
+void forward() {
+  analogWrite(ENA, 200);
+  analogWrite(ENB, 200);
+  digitalWrite(motorA1, HIGH);
+  digitalWrite(motorA2, LOW);
+  digitalWrite(motorB1, HIGH);
+  digitalWrite(motorB2, LOW);
 }
 
-void turnLeft() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
+void back() {
+  analogWrite(ENA, 200);
+  analogWrite(ENB, 200);
+  digitalWrite(motorA1, LOW);
+  digitalWrite(motorA2, HIGH);
+  digitalWrite(motorB1, LOW);
+  digitalWrite(motorB2, HIGH);
 }
 
-void turnRight() {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
+void left() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 200);
+  digitalWrite(motorA1, LOW);
+  digitalWrite(motorA2, LOW);
+  digitalWrite(motorB1, HIGH);
+  digitalWrite(motorB2, LOW);
 }
 
-void stopMotors() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
+void right() {
+  analogWrite(ENA, 200);
+  analogWrite(ENB, 0);
+  digitalWrite(motorA1, HIGH);
+  digitalWrite(motorA2, LOW);
+  digitalWrite(motorB1, LOW);
+  digitalWrite(motorB2, LOW);
+}
+
+void Stop() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+  digitalWrite(motorA1, LOW);
+  digitalWrite(motorA2, LOW);
+  digitalWrite(motorB1, LOW);
+  digitalWrite(motorB2, LOW);
+}
+
+// Turn right for a set time
+void turnRightFor(int timeMs) {
+  right();
+  delay(timeMs);
+  forward();
 }
