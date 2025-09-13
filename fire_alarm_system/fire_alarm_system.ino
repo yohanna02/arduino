@@ -3,6 +3,8 @@
 #include <DFRobotDFPlayerMini.h>
 #include <DHT.h>
 
+// GSM: 22, 23
+
 // ========== Pin Definitions ==========
 #define DHTPIN 34
 #define DHTTYPE DHT11

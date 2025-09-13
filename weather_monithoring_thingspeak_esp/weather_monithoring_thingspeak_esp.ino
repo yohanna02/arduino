@@ -3,7 +3,7 @@
 
 #define mySSID "OIC*"   // WiFi SSID
 #define myPWD "oichub@@1940"          // WiFi Password
-#define myAPI "7RXUOPYG2QY5YZWU"  // API Key
+#define myAPI "L4EB2EGRQC85UDPW"  // API Key
 
 WiFiClient client;
 
@@ -15,7 +15,7 @@ int soilMoisture = 0;
 int rainMoisture = 0;
 int lightMoisture = 0;
 
-unsigned long myChannelNumber = 2981924;
+unsigned long myChannelNumber = 3003490;
 const char* myWriteAPIKey = myAPI;
 
 unsigned long prevMillis = 0;

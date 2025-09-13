@@ -17,13 +17,13 @@ char keys[ROWS][COLS] = {
   { '7', '8', '9' },
   { '*', '0', '#' }
 };
-byte rowPins[ROWS] = { 13, 12, 11, 10 };  // Connect to the row pins of the keypad
-byte colPins[COLS] = { 9, 8, 7 };         // Connect to the column pins of the keypad
+byte rowPins[ROWS] = { 8, 13, 12, 11 };  // Connect to the row pins of the keypad
+byte colPins[COLS] = { 10, 9, 7 };       // Connect to the column pins of the keypad
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
-int gasThreshold = 400;         // Default gas threshold
-String inputBuffer = "";        // To store user input
-bool setThresholdMode = false;  // Flag to toggle modes
+int gasThreshold = 400;        // Default gas threshold
+String inputBuffer = "";       // To store user input
+bool setThresholdMode = true;  // Flag to toggle modes
 
 void setup() {
   pinMode(MQ2_PIN, INPUT);
@@ -43,29 +43,29 @@ void setup() {
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("Ochogwu Charity"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("BPU/EEE/H/EEC/22/"));
-  delay(3000);
-  lcd.clear();
+  // lcd.print(F("Ochogwu Charity"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("BPU/EEE/H/EEC/22/"));
+  // delay(3000);
+  // lcd.clear();
 
-  lcd.print(F("Ogbebo Ede Freeman"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("BPU/EEE/H/EEC/22/003"));
-  delay(3000);
-  lcd.clear();
+  // lcd.print(F("Ogbebo Ede Freeman"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("BPU/EEE/H/EEC/22/003"));
+  // delay(3000);
+  // lcd.clear();
 
-  lcd.print(F("Samuel Shedrac Amodu"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("BPU/EEE/H/EEC/22/"));
-  delay(3000);
-  lcd.clear();
+  // lcd.print(F("Samuel Shedrac Amodu"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("BPU/EEE/H/EEC/22/"));
+  // delay(3000);
+  // lcd.clear();
 
-  lcd.print(F("Supervised by"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("Engr.John Odeh"));
-  delay(3000);
-  lcd.clear();
+  // lcd.print(F("Supervised by"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("Engr.John Odeh"));
+  // delay(3000);
+  // lcd.clear();
 }
 
 void loop() {
@@ -74,22 +74,23 @@ void loop() {
 
   // Check for keypad input
   char key = keypad.getKey();
-  if (key) {
-    if (key == '*') {
-      // Toggle modes
-      setThresholdMode = true;
-      lcd.clear();
-      if (setThresholdMode) {
-        digitalWrite(BUZZER_PIN, LOW);
-        lcd.print("Set Threshold:");
-        inputBuffer = "";  // Clear the input buffer
-      } else {
-        lcd.print("Monitoring...");
-      }
-    } else if (setThresholdMode) {
-      // Handle input in Set Threshold Mode
-      handleSetThresholdInput(key);
+  if (key == '*') {
+    // Toggle modes
+    setThresholdMode = true;
+    lcd.clear();
+    if (setThresholdMode) {
+      digitalWrite(BUZZER_PIN, LOW);
+      lcd.print("Set Threshold:");
+      inputBuffer = "";  // Clear the input buffer
+    } else {
+      lcd.print("Monitoring...");
     }
+  } else if (setThresholdMode) {
+    // Handle input in Set Threshold Mode
+    lcd.setCursor(0, 0);
+    digitalWrite(BUZZER_PIN, LOW);
+    lcd.print("Set Threshold:      ");
+    handleSetThresholdInput(key);
   }
 
   if (!setThresholdMode) {
@@ -114,9 +115,7 @@ void handleSetThresholdInput(char key) {
       lcd.print("Set Threshold:");
       setThresholdMode = false;
     }
-  } else if (key == '*') {
-    // Ignore '*' in Set Threshold Mode
-  } else {
+  } else if (key >= '0' && key <= '9') {
     // Append digit to buffer
     inputBuffer += key;
     lcd.setCursor(0, 1);

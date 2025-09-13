@@ -56,7 +56,7 @@ void loop() {
 
   // Positioning: adjust based on your display size/font
   int hourX = 3;
-  int colonX = 14;  // shift based on font width
+  int colonX = 14;
   int minX = 17;
 
   // Redraw time

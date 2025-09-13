@@ -1,19 +1,20 @@
 #include <DHT.h>
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
-#include <LiquidCrystal_I2C.h>
+// #include <LiquidCrystal_I2C.h>
+#include <LiquidCrystal.h>
 
 #define ESP_SERIAL Serial
 #define seaLevelPressure_hPa 616
-#define DHT_PIN 2
-#define SOIL_PIN A1
-#define RAIN_PIN A2
-// #define LDR_PIN A3
+#define DHT_PIN 10
+#define SOIL_PIN A2
+#define RAIN_PIN A3
+#define LDR_PIN A0
 
-#define RELAY 10
+// #define RELAY 10
 
 Adafruit_BMP085 bmp;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
 DHT dht(DHT_PIN, DHT11);
 
 int state = 0;
@@ -28,16 +29,15 @@ float pressure;
 float altitude;
 int soilMoisture;
 int rainMoisture;
-// int lightMoisture;
+int lightMoisture;
 
 void setup() {
   // put your setup code here, to run once:
   ESP_SERIAL.begin(9600);
   dht.begin();
-  lcd.init();
-  lcd.backlight();
+  lcd.begin(16, 2);
 
-  pinMode(RELAY, OUTPUT);
+  // pinMode(RELAY, OUTPUT);
 
   if (!bmp.begin()) {
     lcd.clear();
@@ -45,39 +45,47 @@ void setup() {
     while (1) {}
   }
 
-  lcd.print(F("Integration of"));
+  // Design and construction of climate analysis system using thinkspeaker cloud server
+
+  lcd.print(F("Design and"));
   lcd.setCursor(0, 1);
-  lcd.print(F("IoT driven smart"));
+  lcd.print(F("construction"));
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("irrigation"));
+  lcd.print(F("of climate analysis"));
   lcd.setCursor(0, 1);
-  lcd.print(F("system for"));
+  lcd.print(F("system using"));
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("substainable rice"));
+  lcd.print(F("using thinkspeaker"));
   lcd.setCursor(0, 1);
-  lcd.print(F("farming in Bayara"));
+  lcd.print(F("cloud server"));
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("area of bauchi"));
+  lcd.print(F("Agbo Vincent Ojima"));
   lcd.setCursor(0, 1);
-  lcd.print(F("state nigeria"));
+  lcd.print(F("EEP/23/10020"));
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("Nwenyi.O Blessed"));
+  lcd.print(F("DAVID OCHEIBI APOCHI"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/19323"));
+  lcd.print(F("EEP/23/10008"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Udenyi Ochuko gift"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("EEP/23/10016"));
   delay(3000);
   lcd.clear();
 
   lcd.print(F("Supervised by"));
   lcd.setCursor(0, 1);
-  lcd.print(F("Mallam Hamza"));
+  lcd.print(F("Mr.Agbo Victor"));
   delay(3000);
   lcd.clear();
 }
@@ -93,11 +101,11 @@ void loop() {
     altitude = bmp.readAltitude();
     soilMoisture = analogRead(SOIL_PIN);
     rainMoisture = analogRead(RAIN_PIN);
-    // lightMoisture = analogRead(LDR_PIN);
+    lightMoisture = analogRead(LDR_PIN);
 
     soilMoisture = map(soilMoisture, 0, 1023, 100, 0);
     rainMoisture = map(rainMoisture, 0, 1023, 100, 0);
-    // lightMoisture = map(lightMoisture, 0, 1023, 100, 0);
+    lightMoisture = map(lightMoisture, 0, 1023, 100, 0);
 
 
     // Display on LCD
@@ -115,22 +123,22 @@ void loop() {
       lcd.print("Soil Moist:" + String(soilMoisture) + "%");
       lcd.setCursor(0, 1);
       lcd.print("Rain:" + String(rainMoisture) + "%");
-    } /* else if (state == 3) {
+    } else if (state == 3) {
       lcd.print("Light:" + String(lightMoisture));
-    } */
+    }
 
     state++;
-    if (state > 2) {
+    if (state > 3) {
       state = 0;
     }
     displayChange = millis();
   }
 
-  if (soilMoisture < 50) {
-    digitalWrite(RELAY, HIGH);
-  } else {
-    digitalWrite(RELAY, LOW);
-  }
+  // if (soilMoisture < 50) {
+  //   digitalWrite(RELAY, HIGH);
+  // } else {
+  //   digitalWrite(RELAY, LOW);
+  // }
 
   if (currentMillis - lastSendTime > interval) {
     send_data();
@@ -165,8 +173,8 @@ void send_data() {
   delay(200);
 
   sendCommand("rain", rainMoisture);
-  // delay(200);
-  // sendCommand("light", lightMoisture);
+  delay(200);
+  sendCommand("light", lightMoisture);
   delay(200);
   lcd.clear();
 }

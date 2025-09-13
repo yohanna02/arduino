@@ -2,7 +2,6 @@
 #include <SoftwareSerial.h>
 #include <LiquidCrystal.h>
 
-// LCD address (often 0x27 or 0x3F for 16x2 I2C LCD)
 LiquidCrystal lcd(A5, A4, A3, A2, A1, 13);
 
 // GPS setup
