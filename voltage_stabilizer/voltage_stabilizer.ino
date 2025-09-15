@@ -1,8 +1,7 @@
 #include <ZMPT101B.h>
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 
-// LCD pins (RS, E, D4, D5, D6, D7)
-LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Relay pins
 #define RELAY1 1
@@ -13,73 +12,15 @@ LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 #define RELAY6 5
 
 // Voltage sensor pins
-#define INPUT_SENSOR_PIN A5
-#define OUTPUT_SENSOR_PIN A4
-
-// Expected mains voltage and tolerance
-#define ACTUAL_VOLTAGE 220.0f
-#define TOLERANCE 3.0f
-#define MAX_TOLERANCE_VOLTAGE (ACTUAL_VOLTAGE + TOLERANCE)
-#define MIN_TOLERANCE_VOLTAGE (ACTUAL_VOLTAGE - TOLERANCE)
-
-// Calibration steps
-#define FAST_STEP 5.0f
-#define FINE_STEP 0.25f
+#define INPUT_SENSOR_PIN A2
+#define OUTPUT_SENSOR_PIN A1
 
 // ZMPT101B sensors
 ZMPT101B inputSensor(INPUT_SENSOR_PIN, 50.0);
 ZMPT101B outputSensor(OUTPUT_SENSOR_PIN, 50.0);
 
-// --- Function to calibrate a ZMPT101B sensor ---
-bool calibrateSensor(ZMPT101B &sensor) {
-  float sensitivity = 0.0f;
-  float voltageNow;
-
-  // Coarse adjustment
-  while (sensitivity <= 1000.0f) {
-    sensor.setSensitivity(sensitivity);
-    voltageNow = sensor.getRmsVoltage();
-
-    if (voltageNow >= MIN_TOLERANCE_VOLTAGE && voltageNow <= MAX_TOLERANCE_VOLTAGE) {
-      break;
-    }
-    sensitivity += FAST_STEP;
-  }
-
-  if (sensitivity > 1000.0f) return false;
-
-  // Fine adjustment
-  float fineSensitivity = sensitivity - FAST_STEP;
-  if (fineSensitivity < 0) fineSensitivity = 0;
-
-  while (fineSensitivity <= sensitivity + FAST_STEP) {
-    sensor.setSensitivity(fineSensitivity);
-    voltageNow = sensor.getRmsVoltage();
-
-    if (voltageNow >= MIN_TOLERANCE_VOLTAGE && voltageNow <= MAX_TOLERANCE_VOLTAGE) {
-      outputSensor.setSensitivity(fineSensitivity);
-      return true;
-    }
-    fineSensitivity += FINE_STEP;
-  }
-
-  return false;  // failed to calibrate
-}
-
-// --- Relay control (cumulative) ---
+// --- Relay control (cumulative logic) ---
 void setRelay(int level) {
-  // Turn everything off if level = 0
-  if (level == 0) {
-    digitalWrite(RELAY1, LOW);
-    digitalWrite(RELAY2, LOW);
-    digitalWrite(RELAY3, LOW);
-    digitalWrite(RELAY4, LOW);
-    digitalWrite(RELAY5, LOW);
-    digitalWrite(RELAY6, LOW);
-    return;
-  }
-
-  // Otherwise, turn on all relays up to "level"
   digitalWrite(RELAY1, (level >= 1) ? HIGH : LOW);
   digitalWrite(RELAY2, (level >= 2) ? HIGH : LOW);
   digitalWrite(RELAY3, (level >= 3) ? HIGH : LOW);
@@ -88,10 +29,20 @@ void setRelay(int level) {
   digitalWrite(RELAY6, (level >= 6) ? HIGH : LOW);
 }
 
+// --- Function to get averaged voltage ---
+float getAverageVoltage(ZMPT101B &sensor, int samples = 20) {
+  float sum = 0;
+  for (int i = 0; i < samples; i++) {
+    sum += sensor.getRmsVoltage();
+    delay(5);  // small delay for stability
+  }
+  return sum / samples;
+}
+
 void setup() {
-  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
   lcd.print("Calibrating...");
-  delay(1000);
 
   pinMode(RELAY1, OUTPUT);
   pinMode(RELAY2, OUTPUT);
@@ -100,22 +51,12 @@ void setup() {
   pinMode(RELAY5, OUTPUT);
   pinMode(RELAY6, OUTPUT);
 
-  // ensure all off
-  setRelay(0);
+  setRelay(0);  // all off
 
-  // Calibrate Input sensor (only one that has power at startup)
-  lcd.clear();
-  lcd.print("Input Calib...");
-  if (!calibrateSensor(inputSensor)) {
-    lcd.clear();
-    lcd.print("In Sensor Fail");
-    while (true)
-      ;  // stop program
-  }
+  inputSensor.setSensitivity(625.0);   // your measured sensitivity
+  outputSensor.setSensitivity(595.0);  // your measured sensitivity
 
-  lcd.clear();
-  lcd.print("Calib OK");
-  delay(1500);
+  delay(1000);
   lcd.clear();
 
   lcd.print(F("Design and"));
@@ -150,19 +91,20 @@ void setup() {
 }
 
 void loop() {
-  float inputV = inputSensor.getRmsVoltage();
-  float outputV = outputSensor.getRmsVoltage();
+  // Use averaging for smoother readings
+  float inputV = getAverageVoltage(inputSensor, 30);
+  float outputV = getAverageVoltage(outputSensor, 20);
 
-  // Display
+  // Display values
   lcd.setCursor(0, 0);
   lcd.print("In:");
   lcd.print(inputV, 0);
-  lcd.print("V ");
+  lcd.print("V   ");
 
   lcd.setCursor(0, 1);
   lcd.print("Out:");
   lcd.print(outputV, 0);
-  lcd.print("V ");
+  lcd.print("V   ");
 
   // Relay decision with cumulative logic
   if (inputV >= 80 && inputV < 107) setRelay(1);
@@ -173,5 +115,5 @@ void loop() {
   else if (inputV >= 250) setRelay(6);
   else setRelay(0);  // below 80V
 
-  delay(1000);
+  delay(500);  // update twice a second
 }
