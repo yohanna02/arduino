@@ -1,35 +1,52 @@
-#define BLYNK_TEMPLATE_ID "TMPL2s2JBrduj"
-#define BLYNK_TEMPLATE_NAME "Gas Cylinder"
-#define BLYNK_AUTH_TOKEN "ZfBq9jVbQxreIeCP9ADtIPLlD_Vs5_8Y"
-
 #include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
+#include <ThingSpeak.h>
 #include <ESPComm.h>
 
 ESPComm esp(Serial);
+WiFiClient client;
 
-char ssid[] = "YourNetworkName";
-char pass[] = "YourPassword";
+char ssid[] = "OIC_";
+char pass[] = "oichub@@1940";
+
+unsigned long myChannelNumber = 2602236;
+const char* myWriteAPIKey = "7LCX6WZUVPJ82C4I";
+
+unsigned long prevMillis = 0;
 
 void setup() {
   // put your setup code here, to run once:
   esp.begin(9600);
   esp.onCommand(processCommand);
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  WiFi.mode(WIFI_STA);
+  ThingSpeak.begin(client);
+
+  if (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED) {
+      WiFi.begin(ssid, pass);
+      delay(5000);
+    }
+  }
+
+  ThingSpeak.setField(1, 0);
+  ThingSpeak.setField(2, 0);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   esp.loop();
-  Blynk.run();
+
+  if (millis() - prevMillis > 20000) {
+    ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    prevMillis = millis();
+  }
 }
 
 void processCommand(String key, String value) {
   int val = value.toInt();
 
-  if (key == "level") {
-    Blynk.virtualWrite(V0, val);
-  } else if (key == "gas") {
-    Blynk.virtualWrite(V1, val);
+  if (key == "PERCENT") {
+    ThingSpeak.setField(1, val);
+  } else if (key == "GAS_DETECTED") {
+    ThingSpeak.setField(2, val);
   }
 }

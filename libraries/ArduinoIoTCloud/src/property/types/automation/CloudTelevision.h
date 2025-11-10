@@ -1,32 +1,25 @@
-//
-// This file is part of ArduinoCloudThing
-//
-// Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
-//
-// This software is released under the GNU General Public License version 3,
-// which covers the main part of ArduinoCloudThing.
-// The terms of this license can be found at:
-// https://www.gnu.org/licenses/gpl-3.0.en.html
-//
-// You can be released from the requirements of the above licenses by purchasing
-// a commercial license. Buying such a license is mandatory if you want to modify or
-// otherwise use the software for commercial activities involving the Arduino
-// software without disclosing the source code of your own applications. To purchase
-// a commercial license, send an email to license@arduino.cc.
-//
+/*
+  This file is part of the ArduinoIoTCloud library.
+
+  Copyright (c) 2019 Arduino SA
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
 
 #ifndef CLOUDTELEVISION_H_
 #define CLOUDTELEVISION_H_
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <Arduino.h>
 #include "../../Property.h"
 
 /******************************************************************************
-   ENUM
+  ENUM
  ******************************************************************************/
 enum class PlaybackCommands : int {
   FastForward   = 0,
@@ -104,7 +97,7 @@ enum class InputValue : int {
 };
 
 /******************************************************************************
-   CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class Television {
@@ -226,8 +219,14 @@ class CloudTelevision : public Property {
       setAttribute(_cloud_value.swi, "swi");
       setAttribute(_cloud_value.vol, "vol");
       setAttribute(_cloud_value.mut, "mut");
+/* PlaybackCommands and InputValue are enum of type int so we can safely disable
+ * strict aliasing warnings here.
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       setAttribute((int&)_cloud_value.pbc, "pbc");
       setAttribute((int&)_cloud_value.inp, "inp");
+#pragma GCC diagnostic pop
       setAttribute(_cloud_value.cha, "cha");
     }
 };

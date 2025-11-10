@@ -1,22 +1,15 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the ArduinoIoTCloud library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2019 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
@@ -35,7 +28,7 @@
 #include <typeinfo>
 
 /******************************************************************************
-   LOCAL MODULE FUNCTIONS
+  LOCAL MODULE FUNCTIONS
  ******************************************************************************/
 
 unsigned long getTime()
@@ -44,11 +37,11 @@ unsigned long getTime()
 }
 
 /******************************************************************************
-   CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
 
 ArduinoIoTCloudTCP::ArduinoIoTCloudTCP()
-: _state{State::ConnectPhy}
+: _state{State::ConfigPhy}
 , _connection_attempt(0,0)
 , _message_stream(std::bind(&ArduinoIoTCloudTCP::sendMessage, this, std::placeholders::_1))
 , _thing(&_message_stream)
@@ -72,36 +65,29 @@ ArduinoIoTCloudTCP::ArduinoIoTCloudTCP()
 , _get_ota_confirmation{nullptr}
 #endif /* OTA_ENABLED */
 {
-
+  cbor::encoder::iotcloud::commandEncoders();
+  cbor::decoder::iotcloud::commandDecoders();
 }
 
 /******************************************************************************
- * PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
-int ArduinoIoTCloudTCP::begin(ConnectionHandler & connection, bool const enable_watchdog, String brokerAddress, uint16_t brokerPort)
+int ArduinoIoTCloudTCP::begin(ConnectionHandler & connection, bool const enable_watchdog, String brokerAddress, uint16_t brokerPort, bool auto_reconnect)
 {
   _connection = &connection;
   _brokerAddress = brokerAddress;
 
-  ArduinoIoTAuthenticationMode authMode = ArduinoIoTAuthenticationMode::CERTIFICATE;
+  _authMode = ArduinoIoTAuthenticationMode::CERTIFICATE;
 #if defined (BOARD_HAS_SECRET_KEY)
   /* If board supports and sketch is configured for username and password login */
   if(_password.length()) {
-    authMode = ArduinoIoTAuthenticationMode::PASSWORD;
+    _authMode = ArduinoIoTAuthenticationMode::PASSWORD;
   }
 #endif
 
-  /* Setup broker TLS client */
-  _brokerClient.begin(connection, authMode);
-
-#if  OTA_ENABLED
-  /* Setup OTA TLS client */
-  _otaClient.begin(connection);
-#endif
-
   /* If board is configured for certificate authentication and mTLS */
-  if(authMode == ArduinoIoTAuthenticationMode::CERTIFICATE)
+  if(_authMode == ArduinoIoTAuthenticationMode::CERTIFICATE)
   {
 #if defined(BOARD_HAS_SECURE_ELEMENT)
     if (!_selement.begin())
@@ -141,18 +127,19 @@ int ArduinoIoTCloudTCP::begin(ConnectionHandler & connection, bool const enable_
     _brokerPort = (brokerPort == DEFAULT_BROKER_PORT_AUTO) ? DEFAULT_BROKER_PORT_USER_PASS_AUTH : brokerPort;
   }
 
-  /* Setup TimeService */
-  _time_service.begin(_connection);
-
   /* Setup retry timers */
   _connection_attempt.begin(AIOT_CONFIG_RECONNECTION_RETRY_DELAY_ms, AIOT_CONFIG_MAX_RECONNECTION_RETRY_DELAY_ms);
-  return begin(enable_watchdog, _brokerAddress, _brokerPort);
+  return begin(enable_watchdog, _brokerAddress, _brokerPort, auto_reconnect);
 }
 
-int ArduinoIoTCloudTCP::begin(bool const enable_watchdog, String brokerAddress, uint16_t brokerPort)
+int ArduinoIoTCloudTCP::begin(bool const enable_watchdog, String brokerAddress, uint16_t brokerPort, bool auto_reconnect)
 {
+  _enable_watchdog = enable_watchdog;
   _brokerAddress = brokerAddress;
   _brokerPort = brokerPort;
+  _auto_reconnect = auto_reconnect;
+
+  _state = State::ConfigPhy;
 
   _mqttClient.setClient(_brokerClient);
 
@@ -174,6 +161,10 @@ int ArduinoIoTCloudTCP::begin(bool const enable_watchdog, String brokerAddress, 
   _thing.begin();
   _device.begin();
 
+  _device.setGetNetworkSettingCbk([connection = this->_connection](models::NetworkSetting &setting) {
+    connection->getSetting(setting);
+  });
+
 #if OTA_ENABLED && !defined(OFFLOADED_DOWNLOAD)
   _ota.setClient(&_otaClient);
 #endif // OTA_ENABLED && !defined(OFFLOADED_DOWNLOAD)
@@ -189,26 +180,18 @@ int ArduinoIoTCloudTCP::begin(bool const enable_watchdog, String brokerAddress, 
   }
 #endif /* BOARD_HAS_OFFLOADED_ECCX08 */
 
-#if defined(ARDUINO_UNOWIFIR4)
+#if defined (ARDUINO_UNOWIFIR4)
   if (String(WiFi.firmwareVersion()) < String("0.2.0")) {
     DEBUG_ERROR("ArduinoIoTCloudTCP::%s In order to connect to Arduino IoT Cloud, WiFi firmware needs to be >= 0.2.0, current %s", __FUNCTION__, WiFi.firmwareVersion());
   }
 #endif
 
-  /* Since we do not control what code the user inserts
-   * between ArduinoIoTCloudTCP::begin() and the first
-   * call to ArduinoIoTCloudTCP::update() it is wise to
-   * set a rather large timeout at first.
-   */
-#if defined (ARDUINO_ARCH_SAMD) || defined (ARDUINO_ARCH_MBED)
-  if (enable_watchdog) {
-    /* Initialize watchdog hardware */
-    watchdog_enable();
-    /* Setup callbacks to feed the watchdog during offloaded network operations (connection/download)*/
-    watchdog_enable_network_feed(_connection->getInterface());
+#if NETWORK_CONFIGURATOR_ENABLED
+  if(_configurator != nullptr){
+    _configurator->enableAgent(ConfiguratorAgent::AgentTypes::BLE,false);
+    _configurator->begin();
   }
 #endif
-
   return 1;
 }
 
@@ -225,12 +208,17 @@ void ArduinoIoTCloudTCP::update()
   State next_state = _state;
   switch (_state)
   {
+  case State::ConfigPhy:            next_state = handle_ConfigPhy();            break;
+  case State::UpdatePhy:            next_state = handle_UpdatePhy();            break;
+  case State::Init:                 next_state = handle_Init();                 break;
   case State::ConnectPhy:           next_state = handle_ConnectPhy();           break;
   case State::SyncTime:             next_state = handle_SyncTime();             break;
   case State::ConnectMqttBroker:    next_state = handle_ConnectMqttBroker();    break;
   case State::Connected:            next_state = handle_Connected();            break;
   case State::Disconnect:           next_state = handle_Disconnect();           break;
+  case State::Disconnected:                                                     break;
   }
+
   _state = next_state;
 
   /* This watchdog feed is actually needed only by the RP2040 Connect because its
@@ -241,11 +229,24 @@ void ArduinoIoTCloudTCP::update()
   watchdog_reset();
 #endif
 
+  /* Poll the network configurator to check if it is updating the configuration.
+   * The polling must be performed only if the the first configuration is completed.
+   */
+  #if NETWORK_CONFIGURATOR_ENABLED
+  if(_configurator != nullptr && _state > State::Init && _configurator->update() == NetworkConfiguratorStates::UPDATING_CONFIG){
+    _state = State::UpdatePhy;
+  }
+  #endif
+
 #if OTA_ENABLED
   /* OTA FSM needs to reach the Idle state before being able to run independently from
    * the mqttClient. The state can be reached only after the mqttClient is connected to
    * the broker.
    */
+  if(_state <= State::ConnectPhy){
+    return;
+  }
+
   if((_ota.getState() != OTACloudProcessInterface::Resume &&
       _ota.getState() != OTACloudProcessInterface::OtaBegin) ||
       _mqttClient.connected()) {
@@ -262,6 +263,9 @@ void ArduinoIoTCloudTCP::update()
 
 int ArduinoIoTCloudTCP::connected()
 {
+  if (_state <= State::ConnectPhy) {
+    return 0;
+  }
   return _mqttClient.connected();
 }
 
@@ -270,11 +274,85 @@ void ArduinoIoTCloudTCP::printDebugInfo()
   DEBUG_INFO("***** Arduino IoT Cloud - %s *****", AIOT_CONFIG_LIB_VERSION);
   DEBUG_INFO("Device ID: %s", getDeviceId().c_str());
   DEBUG_INFO("MQTT Broker: %s:%d", _brokerAddress.c_str(), _brokerPort);
+#if NETWORK_CONFIGURATOR_ENABLED
+  DEBUG_INFO("Network Configurator: %s", ANetworkConfigurator_LIB_VERSION);
+#endif
+}
+
+void ArduinoIoTCloudTCP::disconnect() {
+  if (_state <= State::ConnectPhy) {
+    return;
+  }
+
+  _mqttClient.stop();
+  _auto_reconnect = false;
+  _state = State::Disconnect;
 }
 
 /******************************************************************************
- * PRIVATE MEMBER FUNCTIONS
+  PRIVATE MEMBER FUNCTIONS
  ******************************************************************************/
+
+ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_ConfigPhy()
+{
+#if NETWORK_CONFIGURATOR_ENABLED
+  if (_configurator == nullptr) {
+    return State::Init;
+  }
+
+  if(_configurator->update() == NetworkConfiguratorStates::CONFIGURED) {
+      _configurator->disconnectAgent();
+      return State::Init;
+    }
+  return State::ConfigPhy;
+#else
+  return State::Init;
+#endif
+}
+
+ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_UpdatePhy()
+{
+#if NETWORK_CONFIGURATOR_ENABLED
+  if(_configurator->update() == NetworkConfiguratorStates::CONFIGURED) {
+      _configurator->disconnectAgent();
+      return State::Disconnect;
+    }
+  return State::UpdatePhy;
+#else
+  return State::Init;
+#endif
+}
+
+ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_Init()
+{
+  /* Setup broker TLS client */
+  /* Setup broker TLS client */
+  _brokerClient.begin(*_connection, _authMode);
+
+#if  OTA_ENABLED
+  /* Setup OTA TLS client */
+  _otaClient.begin(*_connection);
+#endif
+
+  /* Setup TimeService */
+  _time_service.begin(_connection);
+
+  /* Since we do not control what code the user inserts
+   * between ArduinoIoTCloudTCP::begin() and the first
+   * call to ArduinoIoTCloudTCP::update() it is wise to
+   * set a rather large timeout at first.
+   */
+#if defined (ARDUINO_ARCH_SAMD) || defined (ARDUINO_ARCH_MBED)
+  if (_enable_watchdog) {
+    /* Initialize watchdog hardware */
+    watchdog_enable();
+    /* Setup callbacks to feed the watchdog during offloaded network operations (connection/download)*/
+    watchdog_enable_network_feed(_connection->getInterface());
+  }
+#endif
+
+  return State::ConnectPhy;
+}
 
 ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_ConnectPhy()
 {
@@ -381,9 +459,13 @@ ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_Disconnect()
   DEBUG_INFO("Disconnected from Arduino IoT Cloud");
   execCloudEventCallback(ArduinoIoTCloudEvent::DISCONNECT);
 
-  /* Setup timer for broker connection and restart */
-  _connection_attempt.begin(AIOT_CONFIG_RECONNECTION_RETRY_DELAY_ms, AIOT_CONFIG_MAX_RECONNECTION_RETRY_DELAY_ms);
-  return State::ConnectPhy;
+  if(_auto_reconnect) {
+    /* Setup timer for broker connection and restart */
+    _connection_attempt.begin(AIOT_CONFIG_RECONNECTION_RETRY_DELAY_ms, AIOT_CONFIG_MAX_RECONNECTION_RETRY_DELAY_ms);
+    return State::ConnectPhy;
+  }
+
+  return State::Disconnected;
 }
 
 void ArduinoIoTCloudTCP::onMessage(int length)
@@ -630,11 +712,12 @@ int ArduinoIoTCloudTCP::updateCertificate(String authorityKeyIdentifier, String 
   }
   return 0;
 }
+
 #endif
 
 /******************************************************************************
- * EXTERN DEFINITION
- ******************************************************************************/
+ EXTERN DEFINITION
+******************************************************************************/
 
 ArduinoIoTCloudTCP ArduinoCloud;
 

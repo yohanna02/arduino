@@ -73,7 +73,7 @@ void setup() {
  --------------------------------------------------------------------------*/
 
 void loop() {
-  if (millis() - prevMillis > 2000) {
+  if (millis() - prevMillis > 5000) {
 
     AQI = ens160.getAQI();
     TVOC = ens160.getTVOC();

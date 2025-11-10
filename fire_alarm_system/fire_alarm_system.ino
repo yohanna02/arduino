@@ -2,58 +2,74 @@
 #include <Keypad.h>
 #include <DFRobotDFPlayerMini.h>
 #include <DHT.h>
+#include <HardwareSerial.h>
 
 // GSM: 22, 23
+HardwareSerial mySerial(1);  // Use UART1
+
+#define sim800 mySerial
 
 // ========== Pin Definitions ==========
-#define DHTPIN 34
+#define DHTPIN 17
 #define DHTTYPE DHT11
 
 #define MQ1_PIN 35
-#define MQ2_PIN 32
-#define FIRE_SENSOR_PIN 33
+#define MQ2_PIN 34
+#define FIRE_SENSOR_PIN 16
 
-#define DFPLAYER_RX 16
-#define DFPLAYER_TX 17
+#define DFPLAYER_RX 4
+#define DFPLAYER_TX 23
 
 // ========== Global Instances ==========
-LiquidCrystal_I2C lcd(0x27, 16, 4);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHT dht(DHTPIN, DHTTYPE);
-HardwareSerial dfSerial(1); // Use UART1 for DFPlayer
+HardwareSerial dfSerial(2);  // Use UART1 for DFPlayer
 DFRobotDFPlayerMini dfplayer;
 
 // ========== Audio Track Enum ==========
 enum AudioTracks {
-  ROOM1_GAS = 1,
-  ROOM2_GAS = 2,
-  ROOM3_FIRE = 3,
-  ROOM3_HEAT = 4
+  ROOM_GAS = 1,
+  ROOM_FIRE = 2,
+  ROOM_HEAT = 3
 };
 
 // ========== Keypad Setup ==========
 const byte ROWS = 4;
 const byte COLS = 3;
 char keys[ROWS][COLS] = {
-  {'1','2','3'},
-  {'4','5','6'},
-  {'7','8','9'},
-  {'*','0','#'}
+  { '1', '2', '3' },
+  { '4', '5', '6' },
+  { '7', '8', '9' },
+  { '*', '0', '#' }
 };
-byte rowPins[ROWS] = {23, 22, 21, 19}; // Adjust for ESP32
-byte colPins[COLS] = {18, 5, 4};       // Adjust for ESP32
+byte rowPins[ROWS] = { 26, 27, 14, 32 };  // Adjust for ESP32
+byte colPins[COLS] = { 25, 13, 33 };      // Adjust for ESP32
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // ========== Thresholds ==========
-int mq1Threshold = 0;
-int mq2Threshold = 0;
-int fireThreshold = 0;
+int mqThreshold = 0;
 int tempThreshold = 0;
 
+bool fireSmsSent = false;
+bool tempSmsSent = false;
+bool gasSmsSent = false;
+
+int mq1 = 0;
+int mq2 = 0;
+int fireVal = 0;
+float temp = 0;
+
+unsigned long prevMillis = 0;
+
+String phoneNumbers[] = {
+  "+2347065109136",
+  "+2349038731345",
+  "+2349018431505"
+};
+
 void setup() {
-  Serial.begin(115200);
-  
   // LCD + DHT Init
-  Wire.begin(26, 27); // SDA = 26, SCL = 27 (adjust if needed)
+  sim800.begin(9600, SERIAL_8N1, 18, 19);
   lcd.init();
   lcd.backlight();
   dht.begin();
@@ -62,20 +78,62 @@ void setup() {
   dfSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX, DFPLAYER_TX);
   if (!dfplayer.begin(dfSerial)) {
     lcd.print("DFPlayer error!");
-    while (true);
+    while (true)
+      ;
   }
-  dfplayer.volume(25); // 0 - 30
+  dfplayer.volume(30);  // 0 - 30
 
-  lcd.setCursor(0, 0);
-  lcd.print("Fire Alarm Setup");
-  delay(2000);
+  lcd.print(F("Federal Polytechic"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Bauchi"));
+  delay(3000);
   lcd.clear();
 
+  lcd.print(F("Department of"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Electrical and Electronics"));
+  delay(3000);
+  lcd.clear();
+
+  // lcd.print(F("Design and"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("construction"));
+  // delay(3000);
+  // lcd.clear();
+
+  // lcd.print(F("of an IoT"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("based intelligent"));
+  // delay(3000);
+  // lcd.clear();
+
+  // lcd.print(F("fire detection"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("and alarm system"));
+  // delay(3000);
+  // lcd.clear();
+
+  // lcd.print(F("Onwunzo Christian Nuamdi"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("23/149012"));
+  // delay(3000);
+  // lcd.clear();
+
+  // lcd.print(F("Williams Ezekiel"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("23/149210"));
+  // delay(3000);
+  // lcd.clear();
+
+  // lcd.print(F("Supervised by"));
+  // lcd.setCursor(0, 1);
+  // lcd.print(F("Engr Kabiru Sani"));
+  // delay(3000);
+  // lcd.clear();
+
   // Get thresholds from keypad
-  mq1Threshold = getThreshold("MQ1 Gas:");
-  mq2Threshold = getThreshold("MQ2 Gas:");
-  fireThreshold = getThreshold("Flame Det:");
-  tempThreshold = getThreshold("Temp (C):");
+  mqThreshold = getThreshold("Smoke ");
+  tempThreshold = getThreshold("Temp ");
 
   lcd.clear();
   lcd.print("System Ready");
@@ -84,42 +142,93 @@ void setup() {
 }
 
 void loop() {
-  int mq1 = analogRead(MQ1_PIN);
-  int mq2 = analogRead(MQ2_PIN);
-  int fireVal = digitalRead(FIRE_SENSOR_PIN);
-  float temp = dht.readTemperature();
+
+  if (millis() - prevMillis > 3000) {
+    mq1 = analogRead(MQ1_PIN);
+    mq2 = analogRead(MQ2_PIN);
+    fireVal = digitalRead(FIRE_SENSOR_PIN);
+    temp = dht.readTemperature();
+    prevMillis = millis();
+  }
 
   lcd.setCursor(0, 0);
   lcd.print("M1:");
   lcd.print(mq1);
   lcd.print(" M2:");
   lcd.print(mq2);
+  lcd.print(F("   "));
 
   lcd.setCursor(0, 1);
   lcd.print("F:");
   lcd.print(fireVal == LOW ? "YES" : "NO ");
   lcd.print(" T:");
   lcd.print(temp, 1);
+  lcd.print(F("   "));
 
-  if (mq1 > mq1Threshold) {
-    playAlert(ROOM1_GAS);
+  if (mq1 > mqThreshold || mq2 > mqThreshold) {
+    if (!gasSmsSent) {
+      lcd.clear();
+      lcd.print(F("Smoke Detected"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Sending SMS...."));
+
+      gasSmsSent = true;
+      sendSMS("Alert\nSmoke Detected!!!");
+      delay(2000);
+      lcd.clear();
+    }
+    playAlert(ROOM_GAS);
+  } else {
+    gasSmsSent = false;
   }
-  if (mq2 > mq2Threshold) {
-    playAlert(ROOM2_GAS);
+
+  if (fireVal == LOW) {
+    if (!fireSmsSent) {
+      lcd.clear();
+      lcd.print(F("Fire Detected"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Sending SMS...."));
+
+      sendSMS("Alert\nFire Detected!!!");
+      fireSmsSent = true;
+      delay(2000);
+      lcd.clear();
+    }
+    playAlert(ROOM_FIRE);
+  } else {
+    fireSmsSent = false;
   }
-  if (fireVal == LOW && fireThreshold == 1) {
-    playAlert(ROOM3_FIRE);
-  }
+
   if (temp > tempThreshold) {
-    playAlert(ROOM3_HEAT);
+    if (!tempSmsSent) {
+      lcd.clear();
+      lcd.print(F("High Temp Detected"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Sending SMS...."));
+
+      tempSmsSent = true;
+      sendSMS("Alert\nHigh Temperature Detected!!!");
+      delay(2000);
+      lcd.clear();
+    }
+    playAlert(ROOM_HEAT);
+  } else {
+    tempSmsSent = false;
   }
 
-  delay(1000);
+  char key = keypad.getKey();
+
+  if (key == '*') {
+    mqThreshold = getThreshold("Smoke ");
+    tempThreshold = getThreshold("Temp ");
+
+    lcd.clear();
+  }
 }
 
 void playAlert(AudioTracks track) {
   dfplayer.play((int)track);
-  delay(5000); // Avoid spamming
+  delay(5000);  // Avoid spamming
 }
 
 // ========== Keypad Threshold Input ==========
@@ -127,8 +236,7 @@ int getThreshold(String label) {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(label);
-  lcd.setCursor(0, 1);
-  lcd.print("Enter value:");
+  lcd.print("Enter value");
 
   String input = "";
   while (true) {
@@ -143,13 +251,26 @@ int getThreshold(String label) {
         return value;
       } else if (key == '*') {
         input = "";
-        lcd.setCursor(0, 2);
+        lcd.setCursor(0, 1);
         lcd.print("Cleared       ");
       } else if (isDigit(key)) {
         input += key;
-        lcd.setCursor(0, 2);
-        lcd.print(input + "    ");
+        lcd.setCursor(0, 1);
+        lcd.print(input + "              ");
       }
     }
+  }
+}
+
+void sendSMS(String message) {
+  int totalNumbers = sizeof(phoneNumbers) / sizeof(phoneNumbers[0]);
+  for (int i = 0; i < totalNumbers; i++) {
+    sim800.println("AT+CMGF=1");  // Set SMS mode to text
+    delay(500);
+    sim800.println("AT+CMGS=\"" + phoneNumbers[i] + "\"");  // Replace with your phone number
+    delay(500);
+    sim800.print(message);
+    sim800.write(26);  // Ctrl+Z to send SMS
+    delay(1000);
   }
 }

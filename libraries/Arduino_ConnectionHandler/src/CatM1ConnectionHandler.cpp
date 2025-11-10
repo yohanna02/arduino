@@ -1,22 +1,15 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the Arduino_ConnectionHandler library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2023 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "ConnectionHandlerDefinitions.h"
@@ -25,52 +18,96 @@
 #include "CatM1ConnectionHandler.h"
 
 /******************************************************************************
-   CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
 
-CatM1ConnectionHandler::CatM1ConnectionHandler(const char * pin, const char * apn, const char * login, const char * pass, RadioAccessTechnologyType rat, uint32_t band, bool const keep_alive)
-: ConnectionHandler{keep_alive, NetworkAdapter::CATM1}
-, _pin(pin)
-, _apn(apn)
-, _login(login)
-, _pass(pass)
-, _rat(rat)
-, _band(band)
-{
+CatM1ConnectionHandler::CatM1ConnectionHandler()
+: ConnectionHandler(true, NetworkAdapter::CATM1) { }
 
+CatM1ConnectionHandler::CatM1ConnectionHandler(
+  const char * pin, const char * apn, const char * login, const char * pass,
+  RadioAccessTechnologyType rat, uint32_t band, bool const keep_alive)
+: ConnectionHandler{keep_alive, NetworkAdapter::CATM1}
+{
+  _settings.type = NetworkAdapter::CATM1;
+  // To keep the backward compatibility, the user can call enableCheckInternetAvailability(false) for disabling the check
+  _check_internet_availability = true;
+  strncpy(_settings.catm1.pin, pin, sizeof(_settings.catm1.pin)-1);
+  strncpy(_settings.catm1.apn, apn, sizeof(_settings.catm1.apn)-1);
+  strncpy(_settings.catm1.login, login, sizeof(_settings.catm1.login)-1);
+  strncpy(_settings.catm1.pass, pass, sizeof(_settings.catm1.pass)-1);
+  _settings.catm1.rat  = static_cast<uint8_t>(rat);
+  _settings.catm1.band = band;
+  _reset = false;
 }
 
 /******************************************************************************
-   PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 unsigned long CatM1ConnectionHandler::getTime()
 {
-  return GSM.getTime();
+  /* It is not safe to call GSM.getTime() since we don't know if modem internal
+   * RTC is in sync with current time.
+   */
+  return 0;
 }
 
 /******************************************************************************
-   PROTECTED MEMBER FUNCTIONS
+  PROTECTED MEMBER FUNCTIONS
  ******************************************************************************/
 
 NetworkConnectionState CatM1ConnectionHandler::update_handleInit()
 {
 #if defined (ARDUINO_EDGE_CONTROL)
+  /* Power on module */
   pinMode(ON_MKR2, OUTPUT);
   digitalWrite(ON_MKR2, HIGH);
 #endif
+
+  if(!GSM.begin(
+    _settings.catm1.pin,
+    _settings.catm1.apn,
+    _settings.catm1.login,
+    _settings.catm1.pass,
+    static_cast<RadioAccessTechnologyType>(_settings.catm1.rat) ,
+    _settings.catm1.band,
+    _reset))
+  {
+    DEBUG_ERROR(F("The board was not able to register to the network..."));
+    _reset = true;
+    return NetworkConnectionState::DISCONNECTED;
+  }
+  _reset = false;
   return NetworkConnectionState::CONNECTING;
 }
 
 NetworkConnectionState CatM1ConnectionHandler::update_handleConnecting()
 {
-  if(!GSM.begin(_pin, _apn, _login, _pass, _rat, _band))
+  if (!GSM.isConnected())
   {
-    Debug.print(DBG_ERROR, F("The board was not able to register to the network..."));
-    return NetworkConnectionState::ERROR;
+    DEBUG_ERROR(F("GSM connection not alive... disconnecting"));
+    return NetworkConnectionState::DISCONNECTED;
   }
-  Debug.print(DBG_INFO, F("Connected to Network"));
-  return NetworkConnectionState::CONNECTED;
+
+  if(!_check_internet_availability){
+    return NetworkConnectionState::CONNECTED;
+  }
+
+  DEBUG_INFO(F("Sending PING to outer space..."));
+  int const ping_result = GSM.ping("time.arduino.cc");
+  DEBUG_INFO(F("GSM.ping(): %d"), ping_result);
+  if (ping_result < 0)
+  {
+    DEBUG_ERROR(F("Internet check failed"));
+    DEBUG_INFO(F("Retrying in  \"%d\" milliseconds"), _timeoutTable.timeout.connecting);
+    return NetworkConnectionState::CONNECTING;
+  }
+  else
+  {
+    DEBUG_INFO(F("Connected to Internet"));
+    return NetworkConnectionState::CONNECTED;
+  }
 }
 
 NetworkConnectionState CatM1ConnectionHandler::update_handleConnected()
@@ -78,6 +115,7 @@ NetworkConnectionState CatM1ConnectionHandler::update_handleConnected()
   int const is_gsm_access_alive = GSM.isConnected();
   if (is_gsm_access_alive != 1)
   {
+    DEBUG_ERROR(F("GSM connection not alive... disconnecting"));
     return NetworkConnectionState::DISCONNECTED;
   }
   return NetworkConnectionState::CONNECTED;
@@ -91,6 +129,7 @@ NetworkConnectionState CatM1ConnectionHandler::update_handleDisconnecting()
 
 NetworkConnectionState CatM1ConnectionHandler::update_handleDisconnected()
 {
+  GSM.end();
   if (_keep_alive)
   {
     return NetworkConnectionState::INIT;

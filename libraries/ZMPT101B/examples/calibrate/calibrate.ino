@@ -23,7 +23,7 @@
 
 // ZMPT101B sensor output connected to analog pin A0
 // and the voltage source frequency is 50 Hz.
-ZMPT101B voltageSensor(A0, 50.0);
+ZMPT101B voltageSensor(34, 50.0);
 
 void setup() {
   Serial.begin(115200);

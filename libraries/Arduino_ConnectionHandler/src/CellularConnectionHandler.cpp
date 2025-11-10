@@ -10,7 +10,7 @@
 
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "ConnectionHandlerDefinitions.h"
@@ -19,21 +19,24 @@
 #include "CellularConnectionHandler.h"
 
 /******************************************************************************
-   CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
+CellularConnectionHandler::CellularConnectionHandler()
+: ConnectionHandler(true, NetworkAdapter::CELL) {}
 
 CellularConnectionHandler::CellularConnectionHandler(const char * pin, const char * apn, const char * login, const char * pass, bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::CELL}
-, _pin(pin)
-, _apn(apn)
-, _login(login)
-, _pass(pass)
 {
+  _settings.type = NetworkAdapter::CELL;
+  strncpy(_settings.cell.pin, pin, sizeof(_settings.cell.pin)-1);
+  strncpy(_settings.cell.apn, apn, sizeof(_settings.cell.apn)-1);
+  strncpy(_settings.cell.login, login, sizeof(_settings.cell.login)-1);
+  strncpy(_settings.cell.pass, pass, sizeof(_settings.cell.pass)-1);
 
 }
 
 /******************************************************************************
-   PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 unsigned long CellularConnectionHandler::getTime()
@@ -43,32 +46,47 @@ unsigned long CellularConnectionHandler::getTime()
 
 UDP & CellularConnectionHandler::getUDP()
 {
-  Debug.print(DBG_ERROR, F("CellularConnectionHandler has no UDP support"));
+  DEBUG_ERROR(F("CellularConnectionHandler has no UDP support"));
   while(1) {};
 }
 
 /******************************************************************************
-   PROTECTED MEMBER FUNCTIONS
+  PROTECTED MEMBER FUNCTIONS
  ******************************************************************************/
 
 NetworkConnectionState CellularConnectionHandler::update_handleInit()
 {
   _cellular.begin();
   _cellular.setDebugStream(Serial);
-  if (String(_pin).length() > 0 && !_cellular.unlockSIM(_pin)) {
-    Debug.print(DBG_ERROR, F("SIM not present or wrong PIN"));
+  if (strlen(_settings.cell.pin) > 0 && !_cellular.unlockSIM(_settings.cell.pin)) {
+    DEBUG_ERROR(F("SIM not present or wrong PIN"));
     return NetworkConnectionState::ERROR;
   }
+
+  if (!_cellular.connect(String(_settings.cell.apn), String(_settings.cell.login), String(_settings.cell.pass))) {
+    DEBUG_ERROR(F("The board was not able to register to the network..."));
+    return NetworkConnectionState::ERROR;
+  }
+  DEBUG_INFO(F("Connected to Network"));
   return NetworkConnectionState::CONNECTING;
 }
 
 NetworkConnectionState CellularConnectionHandler::update_handleConnecting()
 {
-  if (!_cellular.connect(_apn, _login, _pass)) {
-    Debug.print(DBG_ERROR, F("The board was not able to register to the network..."));
-    return NetworkConnectionState::ERROR;
+  if (!_cellular.isConnectedToInternet()) {
+    return NetworkConnectionState::INIT;
   }
-  Debug.print(DBG_INFO, F("Connected to Network"));
+
+  if (!_check_internet_availability) {
+    return NetworkConnectionState::CONNECTED;
+  }
+
+  if(getTime() == 0){
+    DEBUG_ERROR(F("Internet check failed"));
+    DEBUG_INFO(F("Retrying in  \"%d\" milliseconds"), _timeoutTable.timeout.connecting);
+    return NetworkConnectionState::CONNECTING;
+  }
+
   return NetworkConnectionState::CONNECTED;
 }
 

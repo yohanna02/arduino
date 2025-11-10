@@ -45,6 +45,7 @@ LED Panel Layout in RAM
 //SPI library must be included for the SPI scanning/connection method to the DMD
 #include "pins_arduino.h"
 #include <avr/pgmspace.h>
+
 #include <SPI.h>
 
 // ######################################################################################################################

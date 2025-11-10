@@ -1,12 +1,12 @@
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 
-LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Appliance pins
-#define SOCKET 2
-#define BULB   3
-#define FAN    4
-#define TV     5
+#define SOCKET 13
+#define BULB   12
+#define FAN    11
+#define TV     10
 
 char command; // Store incoming Bluetooth command
 
@@ -26,12 +26,56 @@ void setup() {
   Serial.begin(9600);
 
   // Initialize LCD
-  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.print("Home Automation");
   lcd.setCursor(0, 1);
   lcd.print("System Ready");
   delay(2000);
+  lcd.clear();
+
+  lcd.print(F("Design and"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Implementation"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("of a Voiced-controlled"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Smart Home"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Automation"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("System"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Muhammad A.kardam"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150622"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Muhammad M.Malan"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150642"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Umar faruk abdullahi"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150730"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Lazarus danjuma"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150535"));
+  delay(3000);
+  lcd.clear();
 }
 
 void loop() {
@@ -63,7 +107,7 @@ void loop() {
       case 'D': // Toggle TV
         digitalWrite(TV, !digitalRead(TV));
         lcd.clear();
-        lcd.print("TV: ");
+        lcd.print("Socket: ");
         lcd.print(digitalRead(TV) ? "ON" : "OFF");
         break;
 

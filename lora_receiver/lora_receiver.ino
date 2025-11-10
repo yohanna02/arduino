@@ -1,6 +1,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include <ESPComm.h>
+
+ESPComm esp(Serial);
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
@@ -13,12 +16,18 @@ int TVOC = 0;
 int eCO2 = 0;
 byte N = 0;
 float CH4 = 0;
+float temp = 0;
+float humd = 0;
 
 unsigned long prevMillis = 0;
+bool got_data = false;
+
+unsigned long displayMillis = 0;
+int state = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  esp.begin(9600);
 
   lcd.init();
   lcd.backlight();
@@ -51,36 +60,69 @@ void loop() {
     }
     processCommand(incoming);
 
+    got_data = true;
+  }
+
+  if (got_data && millis() - displayMillis > 3000) {
     lcd.clear();
 
-    lcd.setCursor(0, 1);
-    lcd.print(F("TVOC: "));
-    lcd.print(TVOC);
-    lcd.print(F(" ppb    "));
+    if (state == 0) {
+      lcd.setCursor(0, 1);
+      lcd.print(F("TVOC: "));
+      lcd.print(TVOC);
+      lcd.print(F(" ppb    "));
 
-    lcd.setCursor(0, 2);
-    lcd.print(F("eCO2: "));
-    lcd.print(eCO2);
-    lcd.print(F(" ppm    "));
+      lcd.setCursor(0, 2);
+      lcd.print(F("eCO2: "));
+      lcd.print(eCO2);
+      lcd.print(F(" ppm    "));
 
-    lcd.setCursor(0, 3);
-    lcd.print(F("N:"));
-    lcd.print(N);
-    lcd.print(F("mg/kg "));
+      lcd.setCursor(0, 3);
+      lcd.print(F("N:"));
+      lcd.print(N);
+      lcd.print(F("mg/kg "));
 
-    lcd.print(F("CH4:"));
-    lcd.print(CH4);
-    lcd.print(F("ppm    "));
+      lcd.print(F("CH4:"));
+      lcd.print(CH4);
+      lcd.print(F("ppm    "));
 
-    lcd.setCursor(0, 0);
-    lcd.print(F("AQI: "));
-    lcd.print(AQI);
-    lcd.print(F("      "));
+      lcd.setCursor(0, 0);
+      lcd.print(F("AQI: "));
+      lcd.print(AQI);
+      lcd.print(F("      "));
+    } else {
+      lcd.print(F("Temp:"));
+      lcd.print(temp);
+      lcd.print(F("C"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("Humd:"));
+      lcd.print(humd);
+    }
+    state++;
+    if (state == 2) {
+      state = 0;
+    }
+    displayMillis = millis();
   }
 
   if (millis() - prevMillis > 10000) {
-    String data = "CH4=" + String(CH4, 1) + ",N=" + String(N) + ",TVOC=" + String(TVOC) + ",eCO2=" + String(eCO2) + ",AQI=" + String(AQI);
-    Serial.print(data);
+    // String data = "CH4=" + String(CH4, 1) + ",N=" + String(N) + ",TVOC=" + String(TVOC) + ",eCO2=" + String(eCO2) + ",AQI=" + String(AQI) + ",TEMP=" + String(temp, 1) + ",HUMD=" + String(humd, 1);
+    // Serial.print(data);
+
+    esp.send("CH4", CH4);
+    delay(200);
+    esp.send("N", N);
+    delay(200);
+    esp.send("TVOC", TVOC);
+    delay(200);
+    esp.send("eCO2", eCO2);
+    delay(200);
+    esp.send("AQI", AQI);
+    delay(200);
+    esp.send("TEMP", temp);
+    delay(200);
+    esp.send("HUMD", humd);
+
 
     prevMillis = millis();
   }
@@ -105,6 +147,10 @@ void processCommand(String cmd) {
       eCO2 = value;
     } else if (key == "AQI") {
       AQI = value;
+    } else if (key == "TEMP") {
+      temp = value;
+    } else if (key == "HUMD") {
+      humd = value;
     }
   }
 }

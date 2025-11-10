@@ -7,11 +7,11 @@
 #define ESP_SERIAL Serial
 #define seaLevelPressure_hPa 616
 #define DHT_PIN 10
-#define SOIL_PIN A2
-#define RAIN_PIN A3
-#define LDR_PIN A0
+#define SOIL_PIN A0
+#define RAIN_PIN A1
+#define LDR_PIN A2
 
-// #define RELAY 10
+#define RELAY 10
 
 Adafruit_BMP085 bmp;
 LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
@@ -37,15 +37,13 @@ void setup() {
   dht.begin();
   lcd.begin(16, 2);
 
-  // pinMode(RELAY, OUTPUT);
+  pinMode(RELAY, OUTPUT);
 
   if (!bmp.begin()) {
     lcd.clear();
     lcd.print("BMP Error");
     while (1) {}
   }
-
-  // Design and construction of climate analysis system using thinkspeaker cloud server
 
   lcd.print(F("Design and"));
   lcd.setCursor(0, 1);
@@ -65,27 +63,7 @@ void setup() {
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("Agbo Vincent Ojima"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("EEP/23/10020"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.print(F("DAVID OCHEIBI APOCHI"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("EEP/23/10008"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.print(F("Udenyi Ochuko gift"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("EEP/23/10016"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.print(F("Supervised by"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("Mr.Agbo Victor"));
+  lcd.print(F("Blessed"));
   delay(3000);
   lcd.clear();
 }
@@ -134,11 +112,11 @@ void loop() {
     displayChange = millis();
   }
 
-  // if (soilMoisture < 50) {
-  //   digitalWrite(RELAY, HIGH);
-  // } else {
-  //   digitalWrite(RELAY, LOW);
-  // }
+  if (soilMoisture < 50) {
+    digitalWrite(RELAY, HIGH);
+  } else {
+    digitalWrite(RELAY, LOW);
+  }
 
   if (currentMillis - lastSendTime > interval) {
     send_data();

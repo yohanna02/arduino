@@ -9,7 +9,7 @@
 */
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
@@ -21,7 +21,7 @@
 extern "C" unsigned long getTime();
 
 /******************************************************************************
- * PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 #ifdef DEBUG_VERBOSE
@@ -106,6 +106,7 @@ OTACloudProcessInterface::State OTACloudProcessInterface::otaBegin() {
 
   struct OtaBeginUp msg = {
     OtaBeginUpId,
+    {}
   };
 
   SHA256 sha256_calc;
@@ -199,6 +200,7 @@ void OTACloudProcessInterface::reportStatus(int32_t state_data) {
 
   struct OtaProgressCmdUp msg = {
     OtaProgressCmdUpId,
+    {}
   };
 
   memcpy(msg.params.id, context->id, ID_SIZE);

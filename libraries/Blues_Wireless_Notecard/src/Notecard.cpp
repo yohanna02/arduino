@@ -44,15 +44,6 @@
 
 #include "NoteTime.h"
 
-// AUX serial throttling is based on the Arduino define `SERIAL_RX_BUFFER_SIZE`.
-// Unfortunately, some platforms do NOT specify the define. In this case, 64
-// bytes is selected as the default value, because it is a common buffer size
-// across several platforms.
-#ifndef SERIAL_RX_BUFFER_SIZE
-#define SERIAL_RX_BUFFER_SIZE 64
-#pragma message "\n\x1B[0;33mSERIAL_RX_BUFFER_SIZE has not been specified for this platform!\n\nThe value is used to set the default Notecard AUX Serial write speeds.\nA value (" NOTE_C_STRINGIZE(SERIAL_RX_BUFFER_SIZE) ") has been specified on your behalf. Use the 'card.aux.serial'\nrequest to tailor the AUX Serial speed to your board and/or application.\nhttps://dev.blues.io/api-reference/notecard-api/card-requests/#card-aux-serial\x1B[0;0m"
-#endif
-
 /***************************************************************************
  SINGLETON ABSTRACTION (REQUIRED BY NOTE-C)
  ***************************************************************************/
@@ -178,12 +169,6 @@ void noteTransactionStop (void) {
     @param    assignCallbacks
               When `true` the system callbacks will be assigned,
               when `false` the system callbacks will be cleared.
-    @param    i2cmax
-              The max length of each message to send from the host to
-              the Notecard. Used to ensure the messages are sized appropriately
-              for the host.
-    @param    wirePort
-              The TwoWire implementation to use for I2C communication.
 */
 /**************************************************************************/
 void Notecard::platformInit (bool assignCallbacks)
@@ -192,7 +177,7 @@ void Notecard::platformInit (bool assignCallbacks)
     if (assignCallbacks) {
         NoteSetFnDefault(malloc, free, noteDelay, noteMillis);
     } else {
-        NoteSetFnDefault(nullptr, nullptr, nullptr, nullptr);
+        NoteSetFn(nullptr, nullptr, nullptr, nullptr);  // Force clear
     }
 }
 
@@ -219,21 +204,23 @@ Notecard::~Notecard (void)
               communicating with the Notecard from the host.
     @param    i2cAddress
               The I2C Address to use for the Notecard.
-    @param    i2cMax
+    @param    i2cMtu
               The max length of each message to send from the host
               to the Notecard. Used to ensure the messages are sized
               appropriately for the host.
 */
 /**************************************************************************/
-void Notecard::begin(NoteI2c * noteI2c_, uint32_t i2cAddress_, uint32_t i2cMax_)
+void Notecard::begin(NoteI2c * noteI2c_, uint32_t i2cAddress_, uint32_t i2cMtu_)
 {
     noteI2c = noteI2c_;
     platformInit(noteI2c);
     if (noteI2c) {
-        NoteSetFnI2C(i2cAddress_, i2cMax_, noteI2cReset,
-                    noteI2cTransmit, noteI2cReceive);
+        NoteSetI2CAddress(i2cAddress_); // Force set user supplied address
+        NoteSetI2CMtu(i2cMtu_);         // Force set user supplied MTU
+        NoteSetFnI2CDefault(i2cAddress_, i2cMtu_, noteI2cReset,
+                            noteI2cTransmit, noteI2cReceive);
     } else {
-        NoteSetFnI2C(0, 0, nullptr, nullptr, nullptr);
+        NoteSetFnI2C(0, 0, nullptr, nullptr, nullptr); // Force clear
     }
 }
 
@@ -252,19 +239,10 @@ void Notecard::begin(NoteSerial * noteSerial_)
     noteSerial = noteSerial_;
     platformInit(noteSerial);
     if (noteSerial) {
-        NoteSetFnSerial(noteSerialReset, noteSerialTransmit,
-                        noteSerialAvailable, noteSerialReceive);
-
-        // Set the default debug serial throttling
-        J *req = NoteNewRequest("card.aux.serial");
-        if (req != NULL)
-        {
-            JAddIntToObject(req, "max", SERIAL_RX_BUFFER_SIZE - 1);
-            JAddIntToObject(req, "ms", 1);
-            NoteRequestWithRetry(req, 15);
-        }
+        NoteSetFnSerialDefault(noteSerialReset, noteSerialTransmit,
+                               noteSerialAvailable, noteSerialReceive);
     } else {
-        NoteSetFnSerial(nullptr, nullptr, nullptr, nullptr);
+        NoteSetFnSerial(nullptr, nullptr, nullptr, nullptr); // Force clear
     }
 }
 
@@ -306,16 +284,26 @@ void Notecard::deleteResponse(J *rsp) const
 /**************************************************************************/
 void Notecard::end(void)
 {
-    // Clear Communication Interfaces
-    NoteSetFnI2C(0, 0, nullptr, nullptr, nullptr);
-    NoteSetFnSerial(nullptr, nullptr, nullptr, nullptr);
+    // Clear I2C Interface
+    i2cTransmitFn i2c_is_set = nullptr;
+    NoteGetFnI2C(nullptr, nullptr, nullptr, &i2c_is_set, nullptr);
+    if (i2c_is_set) {
+        // Delete Singletons
+        noteI2c = make_note_i2c(nullptr);
+        NoteSetFnI2C(0, 0, nullptr, nullptr, nullptr);
+    }
+
+    // Clear Serial Interface
+    serialTransmitFn serial_is_set = nullptr;
+    NoteGetFnSerial(nullptr, &serial_is_set, nullptr, nullptr);
+    if (serial_is_set) {
+        // Delete Singletons
+        noteSerial = make_note_serial(nullptr);
+        NoteSetFnSerial(nullptr, nullptr, nullptr, nullptr);
+    }
 
     // Clear Platform Callbacks
     platformInit(false);
-
-    // Delete Singletons
-    noteI2c = make_note_i2c(nullptr);
-    noteSerial = make_note_serial(nullptr);
 }
 
 /**************************************************************************/
@@ -489,6 +477,23 @@ void Notecard::setDebugOutputStream(NoteLog * noteLog_)
         make_note_log(nullptr);  // Clear singleton
         NoteSetFnDebugOutput(nullptr);
     }
+}
+
+/**************************************************************************/
+/*!
+    @brief  Override default memory management and timing functions.
+    @param    mallocHook
+              A memory allocation hook.
+    @param    freeHook
+              A memory deallocation hook.
+    @param    delayMsHook
+              A delay execution hook.
+    @param    getMsHook
+              A get current time hook.
+*/
+/**************************************************************************/
+void Notecard::setFn(mallocFn mallocHook, freeFn freeHook, delayMsFn delayMsHook, getMsFn getMsHook) {
+    NoteSetFn(mallocHook, freeHook, delayMsHook, getMsHook);
 }
 
 /**************************************************************************/

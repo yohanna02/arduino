@@ -11,15 +11,17 @@
 #pragma once
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <stdint.h>
 #include <stddef.h>
 #include <interfaces/message.h>
+#include <cbor/standards/StandardMessages.h>
+#include <connectionHandlerModels/settings.h>
 
 /******************************************************************************
- * DEFINE
+  DEFINE
  ******************************************************************************/
 
 #define THING_ID_SIZE               37
@@ -29,7 +31,7 @@
 #define MAX_LIB_VERSION_SIZE        10
 
 /******************************************************************************
-    TYPEDEF
+  TYPEDEF
  ******************************************************************************/
 
 enum CommandId: MessageId {
@@ -42,6 +44,7 @@ enum CommandId: MessageId {
   DeviceRegisteredCmdId,
   DeviceAttachedCmdId,
   DeviceDetachedCmdId,
+  DeviceNetConfigCmdUpId,
 
   /* Thing commands */
   LastValuesBeginCmdId,
@@ -143,6 +146,11 @@ struct TimezoneCommandDown {
     int32_t offset;
     uint32_t until;
   } params;
+};
+
+struct DeviceNetConfigCmdUp {
+  Command c;
+  models::NetworkSetting params;
 };
 
 union CommandDown {

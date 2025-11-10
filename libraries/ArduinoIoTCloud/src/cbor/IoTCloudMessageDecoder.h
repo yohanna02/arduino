@@ -12,7 +12,7 @@
 #define ARDUINO_CBOR_MESSAGE_DECODER_H_
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "./CBOR.h"
@@ -20,7 +20,7 @@
 #include "message/Commands.h"
 
 /******************************************************************************
-   CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class OtaUpdateCommandDecoder: public CBORMessageDecoderInterface {
@@ -62,5 +62,13 @@ public:
 protected:
   MessageDecoder::Status decode(CborValue* iter, Message *msg) override;
 };
+
+namespace cbor { namespace decoder { namespace iotcloud {
+  /**
+   * Some link time optimization may exclude these classes to be instantiated
+   * thus it may be required to reference them from outside of this file
+   */
+  void commandDecoders();
+}}}
 
 #endif /* ARDUINO_CBOR_MESSAGE_DECODER_H_ */

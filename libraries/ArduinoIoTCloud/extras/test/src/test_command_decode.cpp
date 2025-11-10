@@ -1,28 +1,30 @@
 /*
-   Copyright (c) 2024 Arduino.  All rights reserved.
+  This file is part of the ArduinoIoTCloud library.
+
+  Copyright (c) 2019 Arduino SA
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_vector.hpp>
-
 #include <string.h>
-
 #include <memory>
-
 #include <util/CBORTestUtil.h>
 #include <IoTCloudMessageEncoder.h>
 #include <MessageDecoder.h>
 
 /******************************************************************************
-   TEST CODE
+  TEST CODE
  ******************************************************************************/
 
 SCENARIO("Test the decoding of command messages") {
-  /****************************************************************************/
 
   WHEN("Decode the ThingUpdateCmdId message")
   {
@@ -52,7 +54,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
   WHEN("Decode the ThingDetachCmd message")
   {
     CommandDown command;
@@ -81,8 +82,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-   /************************************************************************************/
-
   WHEN("Decode the ThingUpdateCmdId message containing a number instead of a string")
   {
     CommandDown command;
@@ -103,7 +102,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
   WHEN("Decode the ThingDetachCmd message containing a number instead of a string")
   {
     CommandDown command;
@@ -123,8 +121,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-  /****************************************************************************/
 
   WHEN("Decode the TimezoneCommandDown message")
   {
@@ -270,8 +266,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode the LastValuesUpdateCmd message")
   {
     CommandDown command;
@@ -330,8 +324,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-  /****************************************************************************/
 
   WHEN("Decode the OtaUpdateCmdDown message")
   {
@@ -421,8 +413,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-/****************************************************************************/
-
   WHEN("Decode the OtaUpdateCmdDown message with out of order fields 1")
   {
     CommandDown command;
@@ -484,8 +474,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-/****************************************************************************/
 
   WHEN("Decode the OtaUpdateCmdDown message with out of order fields 2")
   {
@@ -549,8 +537,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-/****************************************************************************/
-
   WHEN("Decode the OtaUpdateCmdDown message with corrupted fields 1")
   {
     CommandDown command;
@@ -607,8 +593,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-/****************************************************************************/
 
   WHEN("Decode the OtaUpdateCmdDown message with corrupted fields 2")
   {
@@ -667,7 +651,29 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
+  WHEN("Decode the OtaUpdateCmdDown message without url field")
+  {
+    CommandDown command;
+
+    /*
+      DA 00010100                             # tag(65792)
+        80                                    # array(1)
+            50                                # bytes(16)
+              C73CB045F9C2434585AFFA36A307BFE7"\xC7<\xB0E\xF9\xC2CE\x85\xAF\xFA6\xA3\a\xBF\xE7"
+
+    */
+    uint8_t const payload[] = {0xda, 0x00, 0x01, 0x01, 0x00, 0x81, 0x50, 0xc7,
+                               0x3c, 0xb0, 0x45, 0xf9, 0xc2, 0x43, 0x45, 0x85,
+                               0xaf, 0xfa, 0x36, 0xa3, 0x07, 0xbf, 0xe7};
+
+    size_t payload_length = sizeof(payload) / sizeof(uint8_t);
+    CBORMessageDecoder decoder;
+    MessageDecoder::Status err =  decoder.decode((Message*)&command, payload, payload_length);
+
+    THEN("The decode is unsuccessful") {
+      REQUIRE(err == MessageDecoder::Status::Error);
+    }
+  }
 
   WHEN("Decode the OtaBeginUp message")
   {
@@ -693,8 +699,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode the ThingBeginCmd message")
   {
     CommandDown command;
@@ -716,8 +720,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode the LastValuesBeginCmd message")
   {
     CommandDown command;
@@ -735,8 +737,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-  /****************************************************************************/
 
   WHEN("Decode the DeviceBeginCmd message")
   {
@@ -758,8 +758,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-  /****************************************************************************/
 
   WHEN("Decode the OtaProgressCmdUp message")
   {
@@ -787,8 +785,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode the TimezoneCommandUp message")
   {
     CommandDown command;
@@ -806,8 +802,6 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
-  /****************************************************************************/
 
   WHEN("Decode a message with invalid CBOR tag")
   {
@@ -832,8 +826,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode a message not starting with a CBOR tag")
   {
     CommandDown command;
@@ -856,8 +848,6 @@ SCENARIO("Test the decoding of command messages") {
     }
   }
 
-  /****************************************************************************/
-
   WHEN("Decode an invalid CBOR message")
   {
     CommandDown command;
@@ -872,5 +862,4 @@ SCENARIO("Test the decoding of command messages") {
       REQUIRE(err == MessageDecoder::Status::Error);
     }
   }
-
 }

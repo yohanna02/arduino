@@ -2,22 +2,26 @@
 #include <LiquidCrystal.h>
 #include <TinyGPS++.h>
 
-
-#define PHONE_NUMBER "+234XXXXXXXXXX"
+// #define PHONE_NUMBER "+2349022107944"
+#define PHONE_NUMBER "+2348066734848"
 
 // GPS connected via SoftwareSerial
-SoftwareSerial gpsSerial(4, 3);  // GPS RX, TX
+SoftwareSerial gpsSerial(2, 3);  // GPS RX, TX
 TinyGPSPlus gps;
 
 // LCD pins: RS, E, D4, D5, D6, D7
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
 
 // Buffers
-String smsBuffer = "";
 bool locationReady = false;
 float latitude, longitude;
 
+#define BUZZER 13
+#define BTN 6
+
 void setup() {
+  pinMode(BUZZER, OUTPUT);
+  pinMode(BTN, INPUT_PULLUP);
   lcd.begin(16, 2);
   lcd.print("Initializing...");
 
@@ -33,12 +37,36 @@ void setup() {
   sendCommand("AT+CNMI=1,2,0,0,0", 1000);  // Forward SMS to serial immediately
 
   lcd.clear();
+  lcd.print(F("Design and"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("construction"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("of a GPS"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("tracking device"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Ibrahim Lawan"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/149197"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Mr.Mushinwa Ikechukwu.E"));
+  delay(3000);
+  lcd.clear();
+
   lcd.print("Getting Location");
 }
 
 void loop() {
   // --- GPS Reading ---
-  while (gpsSerial.available()) {
+  if (gpsSerial.available()) {
     gps.encode(gpsSerial.read());
     if (gps.location.isUpdated()) {
       latitude = gps.location.lat();
@@ -58,39 +86,58 @@ void loop() {
 
   // --- GSM SMS Listening ---
   while (Serial.available()) {
-    char c = Serial.read();
-    smsBuffer += c;
+    String smsData = Serial.readString();
+    smsData.toUpperCase();  // normalize
 
-    if (c == '\n') {
-      smsBuffer.trim();
-      if (smsBuffer.indexOf("track") != -1) {
-        sendLocationSMS();
-      }
-      smsBuffer = "";
+
+    if (smsData.indexOf("TRACK") != -1) {
+      digitalWrite(BUZZER, HIGH);
+      lcd.clear();
+      lcd.print(F("Sending"));
+      lcd.setCursor(0, 1);
+      lcd.print(F("location"));
+      delay(3000);
+      sendLocationSMS();
+      digitalWrite(BUZZER, LOW);
+      lcd.clear();
+      while (Serial.available()) Serial.read();
     }
+  }
+
+  if (!digitalRead(BTN)) {
+    digitalWrite(BUZZER, HIGH);
+    lcd.clear();
+    lcd.print(F("Sending"));
+    lcd.setCursor(0, 1);
+    lcd.print(F("location"));
+    delay(3000);
+    sendLocationSMS();
+    digitalWrite(BUZZER, LOW);
+    lcd.clear();
   }
 }
 
 // --- Send Location via SMS ---
 void sendLocationSMS() {
-  if (locationReady) {
-    String message = "Location: https://maps.google.com/?q=";
-    message += String(latitude, 6);
-    message += ",";
-    message += String(longitude, 6);
+  // if (locationReady) {
+  String message = "Location: https://maps.google.com/?q=";
+  message += String(latitude, 6);
+  message += ",";
+  message += String(longitude, 6);
 
-    sendCommand("AT+CMGS=\"" PHONE_NUMBER "\"", 1000);
-    Serial.print(message);
-    Serial.write(26);  // CTRL+Z to send
+  sendCommand("AT+CMGF=1", 1000);
+  sendCommand("AT+CMGS=\"" PHONE_NUMBER "\"", 1000);
+  Serial.print(message);
+  Serial.write(26);  // CTRL+Z to send
 
-    lcd.clear();
-    lcd.print("SMS Sent!");
-    delay(2000);
-  } else {
-    lcd.clear();
-    lcd.print("No Location yet");
-    delay(2000);
-  }
+  lcd.clear();
+  lcd.print("SMS Sent!");
+  delay(2000);
+  // } else {
+  //   lcd.clear();
+  //   lcd.print("No Location yet");
+  //   delay(2000);
+  // }
 }
 
 // --- Helper to send AT commands ---

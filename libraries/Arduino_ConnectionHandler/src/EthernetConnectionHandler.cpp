@@ -1,19 +1,15 @@
 /*
-   This file is part of ArduinoIoTCloud.
-   Copyright 2020 ARDUINO SA (http://www.arduino.cc/)
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This file is part of the Arduino_ConnectionHandler library.
+
+  Copyright (c) 2020 Arduino SA
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "ConnectionHandlerDefinitions.h"
@@ -22,95 +18,121 @@
 #include "EthernetConnectionHandler.h"
 
 /******************************************************************************
-   CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
 
-EthernetConnectionHandler::EthernetConnectionHandler(unsigned long const timeout, unsigned long const responseTimeout, bool const keep_alive)
-: ConnectionHandler{keep_alive, NetworkAdapter::ETHERNET}
-,_ip{INADDR_NONE}
-,_dns{INADDR_NONE}
-,_gateway{INADDR_NONE}
-,_netmask{INADDR_NONE}
-,_timeout{timeout}
-,_response_timeout{responseTimeout}
-{
-
+static inline void fromIPAddress(const IPAddress src, models::ip_addr& dst) {
+  if(src.type() == IPv4) {
+    dst.dword[IPADDRESS_V4_DWORD_INDEX] = (uint32_t)src;
+  } else if(src.type() == IPv6) {
+    for(uint8_t i=0; i<sizeof(dst.bytes); i++) {
+      dst.bytes[i] = src[i];
+    }
+  }
 }
 
-EthernetConnectionHandler::EthernetConnectionHandler(const IPAddress ip, const IPAddress dns, const IPAddress gateway, const IPAddress netmask, unsigned long const timeout, unsigned long const responseTimeout, bool const keep_alive)
+EthernetConnectionHandler::EthernetConnectionHandler(
+  unsigned long const timeout,
+  unsigned long const responseTimeout,
+  bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::ETHERNET}
-,_ip{ip}
-,_dns{dns}
-,_gateway{gateway}
-,_netmask{netmask}
-,_timeout{timeout}
-,_response_timeout{responseTimeout}
 {
-
+  _settings.type = NetworkAdapter::ETHERNET;
+  memset(_settings.eth.ip.dword, 0, sizeof(_settings.eth.ip.dword));
+  memset(_settings.eth.dns.dword, 0, sizeof(_settings.eth.dns.dword));
+  memset(_settings.eth.gateway.dword, 0, sizeof(_settings.eth.gateway.dword));
+  memset(_settings.eth.netmask.dword, 0, sizeof(_settings.eth.netmask.dword));
+  _settings.eth.timeout = timeout;
+  _settings.eth.response_timeout = responseTimeout;
 }
 
-EthernetConnectionHandler::EthernetConnectionHandler(const char * ip, const char * dns, const char * gateway, const char * netmask, unsigned long const timeout, unsigned long const responseTimeout, bool const keep_alive)
+EthernetConnectionHandler::EthernetConnectionHandler(
+  const IPAddress ip, const IPAddress dns, const IPAddress gateway, const IPAddress netmask,
+  unsigned long const timeout, unsigned long const responseTimeout, bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::ETHERNET}
-,_ip{INADDR_NONE}
-,_dns{INADDR_NONE}
-,_gateway{INADDR_NONE}
-,_netmask{INADDR_NONE}
-,_timeout{timeout}
-,_response_timeout{responseTimeout}
 {
-  if(!_ip.fromString(ip)) {
-    _ip = INADDR_NONE;
-  }
-  if(!_dns.fromString(dns)) {
-    _dns = INADDR_NONE;
-  }
-  if(!_gateway.fromString(gateway)) {
-    _gateway = INADDR_NONE;
-  }
-  if(!_netmask.fromString(netmask)) {
-    _netmask = INADDR_NONE;
-  }
+  _settings.type = NetworkAdapter::ETHERNET;
+  fromIPAddress(ip, _settings.eth.ip);
+  fromIPAddress(dns, _settings.eth.dns);
+  fromIPAddress(gateway, _settings.eth.gateway);
+  fromIPAddress(netmask, _settings.eth.netmask);
+  _settings.eth.timeout = timeout;
+  _settings.eth.response_timeout = responseTimeout;
 }
 
 /******************************************************************************
-   PROTECTED MEMBER FUNCTIONS
+  PROTECTED MEMBER FUNCTIONS
  ******************************************************************************/
 
 NetworkConnectionState EthernetConnectionHandler::update_handleInit()
 {
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Debug.print(DBG_ERROR, F("Error, ethernet shield was not found."));
+    DEBUG_ERROR(F("Error, ethernet shield was not found."));
     return NetworkConnectionState::ERROR;
   }
+  IPAddress ip(_settings.eth.ip.type, _settings.eth.ip.bytes);
+
+  // An ip address is provided -> static ip configuration
+  if (ip != INADDR_NONE) {
+    if (Ethernet.begin(nullptr, ip,
+        IPAddress(_settings.eth.dns.type, _settings.eth.dns.bytes),
+        IPAddress(_settings.eth.gateway.type, _settings.eth.gateway.bytes),
+        IPAddress(_settings.eth.netmask.type, _settings.eth.netmask.bytes),
+        _settings.eth.timeout,
+        _settings.eth.response_timeout) == 0) {
+
+      DEBUG_ERROR(F("Failed to configure Ethernet, check cable connection"));
+      DEBUG_VERBOSE("timeout: %d, response timeout: %d",
+        _settings.eth.timeout, _settings.eth.response_timeout);
+      return NetworkConnectionState::INIT;
+    }
+  // An ip address is not provided -> dhcp configuration
+  } else {
+    if (Ethernet.begin(nullptr, _settings.eth.timeout, _settings.eth.response_timeout) == 0) {
+      DEBUG_ERROR(F("Waiting Ethernet configuration from DHCP server, check cable connection"));
+      DEBUG_VERBOSE("timeout: %d, response timeout: %d",
+        _settings.eth.timeout, _settings.eth.response_timeout);
+
+      return NetworkConnectionState::INIT;
+    }
+  }
+
   return NetworkConnectionState::CONNECTING;
 }
 
 NetworkConnectionState EthernetConnectionHandler::update_handleConnecting()
 {
-  if (_ip != INADDR_NONE) {
-    if (Ethernet.begin(nullptr, _ip, _dns, _gateway, _netmask, _timeout, _response_timeout) == 0) {
-      Debug.print(DBG_ERROR, F("Failed to configure Ethernet, check cable connection"));
-      Debug.print(DBG_VERBOSE, "timeout: %d, response timeout: %d", _timeout, _response_timeout);
-      return NetworkConnectionState::CONNECTING;
-    }
-  } else {
-    if (Ethernet.begin(nullptr, _timeout, _response_timeout) == 0) {
-      Debug.print(DBG_ERROR, F("Waiting Ethernet configuration from DHCP server, check cable connection"));
-      Debug.print(DBG_VERBOSE, "timeout: %d, response timeout: %d", _timeout, _response_timeout);
-      return NetworkConnectionState::CONNECTING;
-    }
+  if (Ethernet.linkStatus() == LinkOFF) {
+    return NetworkConnectionState::INIT;
   }
 
-  return NetworkConnectionState::CONNECTED;
+  if (!_check_internet_availability) {
+    return NetworkConnectionState::CONNECTED;
+  }
+
+  int ping_result = Ethernet.ping("time.arduino.cc");
+  DEBUG_INFO(F("Ethernet.ping(): %d"), ping_result);
+  if (ping_result < 0)
+  {
+    DEBUG_ERROR(F("Internet check failed"));
+    DEBUG_INFO(F("Retrying in  \"%d\" milliseconds"), _timeoutTable.timeout.connecting);
+    return NetworkConnectionState::CONNECTING;
+  }
+  else
+  {
+    DEBUG_INFO(F("Connected to Internet"));
+    return NetworkConnectionState::CONNECTED;
+  }
+
 }
 
 NetworkConnectionState EthernetConnectionHandler::update_handleConnected()
 {
   if (Ethernet.linkStatus() == LinkOFF) {
-    Debug.print(DBG_ERROR, F("Ethernet link OFF, connection lost."));
+    DEBUG_ERROR(F("Ethernet link OFF, connection lost."));
     if (_keep_alive)
     {
-      Debug.print(DBG_ERROR, F("Attempting reconnection"));
+      DEBUG_ERROR(F("Attempting reconnection"));
     }
     return NetworkConnectionState::DISCONNECTED;
   }

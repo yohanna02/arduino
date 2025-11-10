@@ -1,15 +1,14 @@
-/* Fill in information from Blynk Device Info here */
 #define BLYNK_TEMPLATE_ID "TMPL21rhrqxsU"
 #define BLYNK_TEMPLATE_NAME "spraying robot"
-#define BLYNK_AUTH_TOKEN "tYAKIddgnY-TO-VKbzQg7y_DkoUFNkBQ"
+#define BLYNK_AUTH_TOKEN "rFVYzqDI5P_Gic2hvMXATP-bImH3X0yJ"
 
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "OIC*";
-char pass[] = "oichub@@1936";
+char ssid[] = "Galaxy A04s 468E";
+char pass[] = "gnut0648";
 
 #define AUTO_MODE "a_m:"
 #define MANUAL_MODE "m_m:"
@@ -19,7 +18,7 @@ char pass[] = "oichub@@1936";
 #define STOP "s:"
 
 #define ON_PUMP "p_o:"
-#define OFF_PUMP "p_f"
+#define OFF_PUMP "p_f:"
 
 WidgetLCD lcd(V1);
 

@@ -1,5 +1,5 @@
 /*
-  This file is part of the Arduino_SecureElement library.
+  This file is part of the ArduinoIoTCloud library.
 
   Copyright (c) 2024 Arduino SA
 
@@ -10,7 +10,7 @@
 
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
@@ -23,7 +23,7 @@
 #include "property/types/CloudWrapperUnsignedInt.h"
 
 /******************************************************************************
- * CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
 ArduinoCloudThing::ArduinoCloudThing(MessageStream* ms)
 : CloudProcess(ms),
@@ -38,7 +38,7 @@ _utcOffsetExpireTimeProperty(nullptr) {
 }
 
 /******************************************************************************
- * PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 void ArduinoCloudThing::begin() {

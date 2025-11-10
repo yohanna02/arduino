@@ -1,22 +1,15 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the Arduino_ConnectionHandler library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2019 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 /******************************************************************************
-   INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include "ConnectionHandlerDefinitions.h"
@@ -25,14 +18,14 @@
 #include "GSMConnectionHandler.h"
 
 /******************************************************************************
-   CONSTANTS
+  CONSTANTS
  ******************************************************************************/
 
 static int const GSM_TIMEOUT = 30000;
 static int const GPRS_TIMEOUT = 30000;
 
 /******************************************************************************
-   FUNCTION DEFINITION
+  FUNCTION DEFINITION
  ******************************************************************************/
 
 __attribute__((weak)) void mkr_gsm_feed_watchdog()
@@ -44,21 +37,25 @@ __attribute__((weak)) void mkr_gsm_feed_watchdog()
 }
 
 /******************************************************************************
-   CTOR/DTOR
+  CTOR/DTOR
  ******************************************************************************/
+GSMConnectionHandler::GSMConnectionHandler()
+: ConnectionHandler(true, NetworkAdapter::GSM) {}
 
 GSMConnectionHandler::GSMConnectionHandler(const char * pin, const char * apn, const char * login, const char * pass, bool const keep_alive)
 : ConnectionHandler{keep_alive, NetworkAdapter::GSM}
-, _pin(pin)
-, _apn(apn)
-, _login(login)
-, _pass(pass)
 {
-
+  _settings.type = NetworkAdapter::GSM;
+  // To keep the backward compatibility, the user can call enableCheckInternetAvailability(false) for disabling the check
+  _check_internet_availability = true;
+  strncpy(_settings.gsm.pin, pin, sizeof(_settings.gsm.pin)-1);
+  strncpy(_settings.gsm.apn, apn, sizeof(_settings.gsm.apn)-1);
+  strncpy(_settings.gsm.login, login, sizeof(_settings.gsm.login)-1);
+  strncpy(_settings.gsm.pass, pass, sizeof(_settings.gsm.pass)-1);
 }
 
 /******************************************************************************
-   PUBLIC MEMBER FUNCTIONS
+  PUBLIC MEMBER FUNCTIONS
  ******************************************************************************/
 
 unsigned long GSMConnectionHandler::getTime()
@@ -67,33 +64,34 @@ unsigned long GSMConnectionHandler::getTime()
 }
 
 /******************************************************************************
-   PROTECTED MEMBER FUNCTIONS
+  PROTECTED MEMBER FUNCTIONS
  ******************************************************************************/
 
 NetworkConnectionState GSMConnectionHandler::update_handleInit()
 {
   mkr_gsm_feed_watchdog();
 
-  if (_gsm.begin(_pin) != GSM_READY)
+  if (_gsm.begin(_settings.gsm.pin) != GSM_READY)
   {
-    Debug.print(DBG_ERROR, F("SIM not present or wrong PIN"));
+    DEBUG_ERROR(F("SIM not present or wrong PIN"));
     return NetworkConnectionState::ERROR;
   }
 
   mkr_gsm_feed_watchdog();
 
-  Debug.print(DBG_INFO, F("SIM card ok"));
+  DEBUG_INFO(F("SIM card ok"));
   _gsm.setTimeout(GSM_TIMEOUT);
   _gprs.setTimeout(GPRS_TIMEOUT);
 
   mkr_gsm_feed_watchdog();
 
-  GSM3_NetworkStatus_t const network_status = _gprs.attachGPRS(_apn, _login, _pass, true);
-  Debug.print(DBG_DEBUG, F("GPRS.attachGPRS(): %d"), network_status);
+  GSM3_NetworkStatus_t const network_status = _gprs.attachGPRS(
+    _settings.gsm.apn, _settings.gsm.login, _settings.gsm.pass, true);
+  DEBUG_DEBUG(F("GPRS.attachGPRS(): %d"), network_status);
   if (network_status == GSM3_NetworkStatus_t::ERROR)
   {
-    Debug.print(DBG_ERROR, F("GPRS attach failed"));
-    Debug.print(DBG_ERROR, F("Make sure the antenna is connected and reset your board."));
+    DEBUG_ERROR(F("GPRS attach failed"));
+    DEBUG_ERROR(F("Make sure the antenna is connected and reset your board."));
     return NetworkConnectionState::ERROR;
   }
 
@@ -102,18 +100,22 @@ NetworkConnectionState GSMConnectionHandler::update_handleInit()
 
 NetworkConnectionState GSMConnectionHandler::update_handleConnecting()
 {
-  Debug.print(DBG_INFO, F("Sending PING to outer space..."));
+  if(!_check_internet_availability){
+    return NetworkConnectionState::CONNECTED;
+  }
+
+  DEBUG_INFO(F("Sending PING to outer space..."));
   int const ping_result = _gprs.ping("time.arduino.cc");
-  Debug.print(DBG_INFO, F("GPRS.ping(): %d"), ping_result);
+  DEBUG_INFO(F("GPRS.ping(): %d"), ping_result);
   if (ping_result < 0)
   {
-    Debug.print(DBG_ERROR, F("PING failed"));
-    Debug.print(DBG_INFO, F("Retrying in  \"%d\" milliseconds"), CHECK_INTERVAL_TABLE[static_cast<unsigned int>(NetworkConnectionState::CONNECTING)]);
+    DEBUG_ERROR(F("PING failed"));
+    DEBUG_INFO(F("Retrying in  \"%d\" milliseconds"), _timeoutTable.timeout.connecting);
     return NetworkConnectionState::CONNECTING;
   }
   else
   {
-    Debug.print(DBG_INFO, F("Connected to GPRS Network"));
+    DEBUG_INFO(F("Connected to GPRS Network"));
     return NetworkConnectionState::CONNECTED;
   }
 }

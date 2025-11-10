@@ -1,33 +1,29 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the ArduinoIoTCloud library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2019 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #ifndef ARDUINO_IOT_CLOUD_H
 #define ARDUINO_IOT_CLOUD_H
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
 
 #include <Arduino_ConnectionHandler.h>
+#if NETWORK_CONFIGURATOR_ENABLED
+  #include <Arduino_NetworkConfigurator.h>
+#endif
 
 #if defined(DEBUG_ERROR) || defined(DEBUG_WARNING) || defined(DEBUG_INFO) || defined(DEBUG_DEBUG) || defined(DEBUG_VERBOSE)
-#  include <Arduino_DebugUtils.h>
+  #include <Arduino_DebugUtils.h>
 #endif
 
 #include "AIoTC_Const.h"
@@ -45,7 +41,7 @@
 #include "utility/time/TimeService.h"
 
 /******************************************************************************
-   TYPEDEF
+  TYPEDEF
  ******************************************************************************/
 
 typedef enum
@@ -73,7 +69,7 @@ enum class ArduinoIoTCloudEvent : size_t
 typedef void (*OnCloudEventCallback)(void);
 
 /******************************************************************************
- * CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class ArduinoIoTCloudClass
@@ -87,7 +83,7 @@ class ArduinoIoTCloudClass
     virtual void update        () = 0;
     virtual int  connected     () = 0;
     virtual void printDebugInfo() = 0;
-
+    virtual void disconnect    () { }
             void push();
             bool setTimestamp(String const & prop_name, unsigned long const timestamp);
 
@@ -101,6 +97,9 @@ class ArduinoIoTCloudClass
     inline unsigned long getInternalTime()              { return _time_service.getTime(); }
     inline unsigned long getLocalTime()                 { return _time_service.getLocalTime(); }
 
+    #if NETWORK_CONFIGURATOR_ENABLED
+    inline void setConfigurator(NetworkConfiguratorClass & configurator) { _configurator = &configurator; }
+    #endif
     void addCallback(ArduinoIoTCloudEvent const event, OnCloudEventCallback callback);
 
 #define addProperty( v, ...) addPropertyReal(v, #v, __VA_ARGS__)
@@ -146,6 +145,9 @@ class ArduinoIoTCloudClass
   protected:
 
     ConnectionHandler * _connection;
+    #if NETWORK_CONFIGURATOR_ENABLED
+    NetworkConfiguratorClass * _configurator;
+    #endif
     TimeServiceClass & _time_service;
     String _thing_id;
     String _lib_version;

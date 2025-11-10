@@ -1,8 +1,12 @@
 //#include <LiquidCrystal_I2C.h>
 //
 //LiquidCrystal_I2C lcd(0x27, 16, 2);
+#include <SoftwareSerial.h>
+
+SoftwareSerial _serial(3, 2);
 
 #define NUMBER "+2349022107944"
+// #define GSM_SERIAL _serial
 #define GSM_SERIAL Serial
 
 void setup() {

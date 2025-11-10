@@ -3,7 +3,8 @@
 
 #define mySSID "OIC*"   // WiFi SSID
 #define myPWD "oichub@@1940"          // WiFi Password
-#define myAPI "L4EB2EGRQC85UDPW"  // API Key
+// #define myAPI "L4EB2EGRQC85UDPW"  // API Key
+#define myAPI "7RXUOPYG2QY5YZWU"  // API Key
 
 WiFiClient client;
 

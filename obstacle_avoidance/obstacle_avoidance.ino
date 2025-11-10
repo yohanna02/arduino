@@ -16,14 +16,14 @@ SoftwareSerial _serial(12, 13);
 #define RELAY_1 9
 #define RELAY_2 6
 
-#define RELAY_3 5
-#define RELAY_4 A0
+// #define RELAY_3 5
+// #define RELAY_4 A0
 
 // #define R_S 12  //ir sensor Right
 // #define L_S A5   //ir sensor Left
 
-#define PI_PIN 1
-#define PUMP 0
+#define PI_PIN 7
+#define PUMP 5
 
 #define CAMERA_ROTATE_1 2
 #define CAMERA_ROTATE_2 4
@@ -32,8 +32,8 @@ SoftwareSerial _serial(12, 13);
 unsigned long moveMillis = 0;
 bool toggleMove = true;
 
-#define CAMERA_ROTATE_DURATION 800  // Rotation time (adjust as needed)
-#define CAMERA_WAIT_TIME 2000       // Wait time after rotating
+#define CAMERA_ROTATE_DURATION 3500  // Rotation time (adjust as needed)
+#define CAMERA_WAIT_TIME 2000        // Wait time after rotating
 
 int stopState = 0;
 unsigned long cameraRotateMillis = 0;
@@ -53,7 +53,7 @@ bool auto_mode = true;
 #define STOP "s:"
 
 #define ON_PUMP "p_o:"
-#define OFF_PUMP "p_f"
+#define OFF_PUMP "p_f:"
 
 void setup() {
   // put your setup code here, to run once:
@@ -63,6 +63,7 @@ void setup() {
   ESP_SERIAL.begin(9600);
 
   pinMode(PI_PIN, INPUT);
+  pinMode(PUMP, OUTPUT);
 
   pinMode(TRIG_ONE, OUTPUT);
   pinMode(ECHO_ONE, INPUT);
@@ -73,40 +74,43 @@ void setup() {
 
   pinMode(RELAY_1, OUTPUT);
   pinMode(RELAY_2, OUTPUT);
-  pinMode(RELAY_3, OUTPUT);
-  pinMode(RELAY_4, OUTPUT);
+  // pinMode(RELAY_3, OUTPUT);
+  // digitalWrite(RELAY_3, HIGH);
+  // pinMode(RELAY_4, OUTPUT);
 
   pinMode(CAMERA_ROTATE_1, OUTPUT);
   pinMode(CAMERA_ROTATE_2, OUTPUT);
   pinMode(CAMERA_ROTATE_SPEED, OUTPUT);
 
-  pinMode(8, OUTPUT);
-  pinMode(7, OUTPUT);
+  delay(60000);
 
-  digitalWrite(8, HIGH);
-  digitalWrite(7, HIGH);
+  // pinMode(8, OUTPUT);
+  // pinMode(7, OUTPUT);
 
-  while (1) {
-    digitalWrite(RELAY_1, HIGH);
-    digitalWrite(RELAY_2, LOW);
+  // digitalWrite(8, HIGH);
+  // digitalWrite(7, HIGH);
 
-    digitalWrite(RELAY_3, LOW);
-    digitalWrite(RELAY_4, HIGH);
-    delay(10000);
+  // while (1) {
+  //   digitalWrite(RELAY_1, HIGH);
+  //   digitalWrite(RELAY_2, LOW);
 
-    Stop();
-    delay(2000);
+  //   digitalWrite(RELAY_3, LOW);
+  //   digitalWrite(RELAY_4, HIGH);
+  //   delay(10000);
 
-    digitalWrite(RELAY_1, LOW);
-    digitalWrite(RELAY_2, HIGH);
+  //   Stop();
+  //   delay(2000);
 
-    digitalWrite(RELAY_3, HIGH);
-    digitalWrite(RELAY_4, LOW);
-    delay(10000);
+  //   digitalWrite(RELAY_1, LOW);
+  //   digitalWrite(RELAY_2, HIGH);
 
-    Stop();
-    delay(2000);
-  }
+  //   digitalWrite(RELAY_3, HIGH);
+  //   digitalWrite(RELAY_4, LOW);
+  //   delay(10000);
+
+  //   Stop();
+  //   delay(2000);
+  // }
 }
 
 void loop() {
@@ -128,8 +132,9 @@ void loop() {
     // if (getDistance(TANK_TRIG_TWO, TANK_TRIG_TWO) < ) {
     // }
     digitalWrite(PUMP, HIGH);
-    delay(3000);
+    delay(2000);
     digitalWrite(PUMP, LOW);
+    delay(5000);
     toggleMove = true;
   }
 
@@ -166,11 +171,7 @@ void loop() {
       distance_two = getDistance(TRIG_TWO, ECHO_TWO);
 
       if (distance_one < 15 || distance_two < 15) {
-        digitalWrite(RELAY_1, HIGH);
-        digitalWrite(RELAY_2, LOW);
-
-        digitalWrite(RELAY_3, LOW);
-        digitalWrite(RELAY_4, HIGH);
+        backward();
         delay(5000);
         Stop();
       }
@@ -202,6 +203,8 @@ void loop() {
         scanning = false;  // Resume movement
       }
     }
+  } else {
+    stopCameraRotation();
   }
 }
 
@@ -244,43 +247,49 @@ int getDistance(int trigPin, int echoPin) {
 }
 
 void forward() {  //forword
-  digitalWrite(RELAY_1, HIGH);
-  digitalWrite(RELAY_2, LOW);
+  analogWrite(RELAY_1, 255);
+  analogWrite(RELAY_2, 0);
+  // digitalWrite(RELAY_1, HIGH);
+  // digitalWrite(RELAY_2, LOW);
 
-  digitalWrite(RELAY_3, HIGH);
-  digitalWrite(RELAY_4, LOW);
+  // digitalWrite(RELAY_3, HIGH);
+  // digitalWrite(RELAY_4, LOW);
 }
 
 void backward() {  //forword
-  digitalWrite(RELAY_1, LOW);
-  digitalWrite(RELAY_2, HIGH);
+  analogWrite(RELAY_1, 0);
+  analogWrite(RELAY_2, 255);
+  // digitalWrite(RELAY_1, LOW);
+  // digitalWrite(RELAY_2, HIGH);
 
-  digitalWrite(RELAY_3, LOW);
-  digitalWrite(RELAY_4, HIGH);
+  // digitalWrite(RELAY_3, LOW);
+  // digitalWrite(RELAY_4, HIGH);
 }
 
-void turnRight() {  //turnRight
-  digitalWrite(RELAY_1, HIGH);
-  digitalWrite(RELAY_2, LOW);
+// void turnRight() {  //turnRight
+//   digitalWrite(RELAY_1, HIGH);
+//   digitalWrite(RELAY_2, LOW);
 
-  digitalWrite(RELAY_3, LOW);
-  digitalWrite(RELAY_4, LOW);
-}
+//   digitalWrite(RELAY_3, LOW);
+//   digitalWrite(RELAY_4, LOW);
+// }
 
-void turnLeft() {  //turnLeft
-  digitalWrite(RELAY_1, LOW);
-  digitalWrite(RELAY_2, LOW);
+// void turnLeft() {  //turnLeft
+//   digitalWrite(RELAY_1, LOW);
+//   digitalWrite(RELAY_2, LOW);
 
-  digitalWrite(RELAY_3, HIGH);
-  digitalWrite(RELAY_4, LOW);
-}
+//   digitalWrite(RELAY_3, HIGH);
+//   digitalWrite(RELAY_4, LOW);
+// }
 
 void Stop() {  //stop
-  digitalWrite(RELAY_1, LOW);
-  digitalWrite(RELAY_2, LOW);
+  analogWrite(RELAY_1, 0);
+  analogWrite(RELAY_2, 0);
+  // digitalWrite(RELAY_1, LOW);
+  // digitalWrite(RELAY_2, LOW);
 
-  digitalWrite(RELAY_3, LOW);
-  digitalWrite(RELAY_4, LOW);
+  // digitalWrite(RELAY_3, LOW);
+  // digitalWrite(RELAY_4, LOW);
 }
 
 /*   // Serial.println(F("Moving"));

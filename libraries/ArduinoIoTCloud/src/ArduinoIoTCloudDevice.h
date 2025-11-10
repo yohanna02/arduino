@@ -1,5 +1,5 @@
 /*
-  This file is part of the Arduino_SecureElement library.
+  This file is part of the ArduinoIoTCloud library.
 
   Copyright (c) 2024 Arduino SA
 
@@ -12,19 +12,23 @@
 #define ARDUINO_IOT_CLOUD_DEVICE_H
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <Arduino_TimedAttempt.h>
 #include "interfaces/CloudProcess.h"
 #include "property/PropertyContainer.h"
+#include <Arduino_ConnectionHandler.h>
+#include <connectionHandlerModels/settings.h>
 
 /******************************************************************************
- * CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class ArduinoCloudDevice : public CloudProcess {
 public:
+
+  typedef std::function<void(models::NetworkSetting&)> GetNetworkSettingCbk;
 
   ArduinoCloudDevice(MessageStream* stream);
   virtual void update() override;
@@ -43,6 +47,10 @@ public:
     return _attached;
   };
 
+  void setGetNetworkSettingCbk(GetNetworkSettingCbk cbk) {
+    _getNetConfigCallback = cbk;
+  }
+
 
 private:
 
@@ -57,6 +65,7 @@ private:
   CommandId _command;
   TimedAttempt _attachAttempt;
   PropertyContainer _propertyContainer;
+  GetNetworkSettingCbk _getNetConfigCallback;
   unsigned int _propertyContainerIndex;
   bool _attached;
   bool _registered;

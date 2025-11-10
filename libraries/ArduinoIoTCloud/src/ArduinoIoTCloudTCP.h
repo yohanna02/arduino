@@ -1,25 +1,18 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the ArduinoIoTCloud library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2019 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #ifndef ARDUINO_IOT_CLOUD_TCP_H
 #define ARDUINO_IOT_CLOUD_TCP_H
 
 /******************************************************************************
- * INCLUDE
+  INCLUDE
  ******************************************************************************/
 
 #include <AIoTC_Config.h>
@@ -45,7 +38,7 @@
 #include "cbor/IoTCloudMessageEncoder.h"
 
 /******************************************************************************
-   CONSTANTS
+  CONSTANTS
  ******************************************************************************/
 static constexpr char DEFAULT_BROKER_ADDRESS[] = "iot.arduino.cc";
 static constexpr uint16_t DEFAULT_BROKER_PORT_SECURE_AUTH = 8885;
@@ -53,13 +46,13 @@ static constexpr uint16_t DEFAULT_BROKER_PORT_USER_PASS_AUTH = 8884;
 static constexpr uint16_t DEFAULT_BROKER_PORT_AUTO = 0;
 
 /******************************************************************************
- * TYPEDEF
+  TYPEDEF
  ******************************************************************************/
 
 typedef bool (*onOTARequestCallbackFunc)(void);
 
 /******************************************************************************
- * CLASS DECLARATION
+  CLASS DECLARATION
  ******************************************************************************/
 
 class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
@@ -72,9 +65,10 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
     virtual void update        () override;
     virtual int  connected     () override;
     virtual void printDebugInfo() override;
+    virtual void disconnect    () override;
 
-    int begin(ConnectionHandler & connection, bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO);
-    int begin(bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO);
+    int begin(ConnectionHandler & connection, bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO, bool auto_reconnect = true);
+    int begin(bool const enable_watchdog = true, String brokerAddress = DEFAULT_BROKER_ADDRESS, uint16_t brokerPort = DEFAULT_BROKER_PORT_AUTO, bool auto_reconnect = true);
 
 #if defined(BOARD_HAS_SECURE_ELEMENT)
     int updateCertificate(String authorityKeyIdentifier, String serialNumber, String notBefore, String notAfter, String signature);
@@ -120,11 +114,15 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
 
     enum class State
     {
+      ConfigPhy,
+      UpdatePhy,
+      Init,
       ConnectPhy,
       SyncTime,
       ConnectMqttBroker,
       Connected,
       Disconnect,
+      Disconnected,
     };
 
     State _state;
@@ -133,11 +131,14 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
     ArduinoCloudThing _thing;
     ArduinoCloudDevice _device;
 
+    ArduinoIoTAuthenticationMode _authMode;
     String _brokerAddress;
     uint16_t _brokerPort;
     uint8_t _mqtt_data_buf[MQTT_TRANSMIT_BUFFER_SIZE];
     int _mqtt_data_len;
     bool _mqtt_data_request_retransmit;
+    bool _enable_watchdog;
+    bool _auto_reconnect;
 
 #if defined(BOARD_HAS_SECRET_KEY)
     String _password;
@@ -170,6 +171,9 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
     inline String getTopic_dataout  () { return ( getThingId().length() == 0) ? String("") : String("/a/t/" + getThingId() + "/e/o"); }
     inline String getTopic_datain   () { return ( getThingId().length() == 0) ? String("") : String("/a/t/" + getThingId() + "/e/i"); }
 
+    State handle_ConfigPhy();
+    State handle_UpdatePhy();
+    State handle_Init();
     State handle_ConnectPhy();
     State handle_SyncTime();
     State handle_ConnectMqttBroker();
@@ -188,7 +192,7 @@ class ArduinoIoTCloudTCP: public ArduinoIoTCloudClass
 };
 
 /******************************************************************************
- * EXTERN DECLARATION
+  EXTERN DECLARATION
  ******************************************************************************/
 
 extern ArduinoIoTCloudTCP ArduinoCloud;

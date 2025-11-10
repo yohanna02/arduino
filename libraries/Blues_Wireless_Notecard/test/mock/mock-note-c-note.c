@@ -4,6 +4,8 @@ JAddIntToObject_Parameters jAddIntToObject_Parameters;
 NoteDebug_Parameters noteDebug_Parameters;
 NoteDebugSyncStatus_Parameters noteDebugSyncStatus_Parameters;
 NoteDeleteResponse_Parameters noteDeleteResponse_Parameters;
+NoteGetFnI2C_Parameters noteGetFnI2C_Parameters;
+NoteGetFnSerial_Parameters noteGetFnSerial_Parameters;
 NoteNewCommand_Parameters noteNewCommand_Parameters;
 NoteNewRequest_Parameters noteNewRequest_Parameters;
 NoteRequest_Parameters noteRequest_Parameters;
@@ -12,12 +14,17 @@ NoteRequestResponse_Parameters noteRequestResponse_Parameters;
 NoteRequestResponseWithRetry_Parameters noteRequestResponseWithRetry_Parameters;
 NoteResponseError_Parameters noteResponseError_Parameters;
 NoteSetFnDebugOutput_Parameters noteSetFnDebugOutput_Parameters;
+NoteSetFn_Parameters noteSetFn_Parameters;
 NoteSetFnDefault_Parameters noteSetFnDefault_Parameters;
 NoteSetFnI2C_Parameters noteSetFnI2C_Parameters;
+NoteSetFnI2CDefault_Parameters noteSetFnI2CDefault_Parameters;
 NoteSetFnI2CMutex_Parameters noteSetFnI2CMutex_Parameters;
 NoteSetFnNoteMutex_Parameters noteSetFnNoteMutex_Parameters;
 NoteSetFnSerial_Parameters noteSetFnSerial_Parameters;
+NoteSetFnSerialDefault_Parameters noteSetFnSerialDefault_Parameters;
 NoteSetFnTransaction_Parameters noteSetFnTransaction_Parameters;
+NoteSetI2CAddress_Parameters noteSetI2CAddress_Parameters;
+NoteSetI2CMtu_Parameters noteSetI2CMtu_Parameters;
 NoteSetUserAgent_Parameters noteSetUserAgent_Parameters;
 
 J *
@@ -95,6 +102,65 @@ NoteDebugSyncStatus(
 
     // Return user-supplied result
     return noteDebugSyncStatus_Parameters.result;
+}
+
+void NoteGetFnI2C(uint32_t *notecardAddr, uint32_t *maxTransmitSize,
+                  i2cResetFn *resetFn, i2cTransmitFn *transmitFn,
+                  i2cReceiveFn *receiveFn
+) {
+    // Record invocation(s)
+    ++noteGetFnI2C_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteGetFnI2C_Parameters.notecardAddr = notecardAddr;
+    noteGetFnI2C_Parameters.maxTransmitSize = maxTransmitSize;
+    noteGetFnI2C_Parameters.resetFn = resetFn;
+    noteGetFnI2C_Parameters.transmitFn = transmitFn;
+    noteGetFnI2C_Parameters.receiveFn = receiveFn;
+
+    // Return user-supplied result
+    if (notecardAddr) {
+        *notecardAddr = noteGetFnI2C_Parameters.notecardAddr_result;
+    }
+    if (maxTransmitSize) {
+        *maxTransmitSize = noteGetFnI2C_Parameters.maxTransmitSize_result;
+    }
+    if (resetFn) {
+        *resetFn = noteGetFnI2C_Parameters.resetFn_result;
+    }
+    if (transmitFn) {
+        *transmitFn = noteGetFnI2C_Parameters.transmitFn_result;
+    }
+    if (receiveFn) {
+        *receiveFn = noteGetFnI2C_Parameters.receiveFn_result;
+    }
+}
+
+void NoteGetFnSerial(serialResetFn *resetFn, serialTransmitFn *transmitFn,
+                     serialAvailableFn *availFn, serialReceiveFn *receiveFn
+) {
+    // Record invocation(s)
+    ++noteGetFnSerial_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteGetFnSerial_Parameters.resetFn = resetFn;
+    noteGetFnSerial_Parameters.transmitFn = transmitFn;
+    noteGetFnSerial_Parameters.availFn = availFn;
+    noteGetFnSerial_Parameters.receiveFn = receiveFn;
+
+    // Return user-supplied result
+    if (resetFn) {
+        *resetFn = noteGetFnSerial_Parameters.resetFn_result;
+    }
+    if (transmitFn) {
+        *transmitFn = noteGetFnSerial_Parameters.transmitFn_result;
+    }
+    if (availFn) {
+        *availFn = noteGetFnSerial_Parameters.availFn_result;
+    }
+    if (receiveFn) {
+        *receiveFn = noteGetFnSerial_Parameters.receiveFn_result;
+    }
 }
 
 J *
@@ -203,6 +269,23 @@ NoteSetFnDebugOutput(
 }
 
 void
+NoteSetFn(
+    mallocFn malloc_fn_,
+    freeFn free_fn_,
+    delayMsFn delay_fn_,
+    getMsFn millis_fn_
+) {
+    // Record invocation(s)
+    ++noteSetFn_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteSetFn_Parameters.mallocfn = malloc_fn_;
+    noteSetFn_Parameters.freefn = free_fn_;
+    noteSetFn_Parameters.delayfn = delay_fn_;
+    noteSetFn_Parameters.millisfn = millis_fn_;
+}
+
+void
 NoteSetFnDefault(
     mallocFn malloc_fn_,
     freeFn free_fn_,
@@ -222,7 +305,7 @@ NoteSetFnDefault(
 void
 NoteSetFnI2C(
     uint32_t i2c_addr_,
-    uint32_t i2c_max_,
+    uint32_t i2c_mtu_,
     i2cResetFn reset_fn_,
     i2cTransmitFn transmit_fn_,
     i2cReceiveFn receive_fn_
@@ -232,10 +315,29 @@ NoteSetFnI2C(
 
     // Stash parameter(s)
     noteSetFnI2C_Parameters.i2caddr = i2c_addr_;
-    noteSetFnI2C_Parameters.i2cmax = i2c_max_;
+    noteSetFnI2C_Parameters.i2cmtu = i2c_mtu_;
     noteSetFnI2C_Parameters.resetfn = reset_fn_;
     noteSetFnI2C_Parameters.transmitfn = transmit_fn_;
     noteSetFnI2C_Parameters.receivefn = receive_fn_;
+}
+
+void
+NoteSetFnI2CDefault(
+    uint32_t i2c_addr_,
+    uint32_t i2c_mtu_,
+    i2cResetFn reset_fn_,
+    i2cTransmitFn transmit_fn_,
+    i2cReceiveFn receive_fn_
+) {
+    // Record invocation(s)
+    ++noteSetFnI2CDefault_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteSetFnI2CDefault_Parameters.i2caddr = i2c_addr_;
+    noteSetFnI2CDefault_Parameters.i2cmtu = i2c_mtu_;
+    noteSetFnI2CDefault_Parameters.resetfn = reset_fn_;
+    noteSetFnI2CDefault_Parameters.transmitfn = transmit_fn_;
+    noteSetFnI2CDefault_Parameters.receivefn = receive_fn_;
 }
 
 void
@@ -282,6 +384,23 @@ NoteSetFnSerial(
 }
 
 void
+NoteSetFnSerialDefault(
+    serialResetFn reset_fn_,
+    serialTransmitFn write_fn_,
+    serialAvailableFn avail_fn_,
+    serialReceiveFn read_fn_
+) {
+    // Record invocation(s)
+    ++noteSetFnSerialDefault_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteSetFnSerialDefault_Parameters.resetfn = reset_fn_;
+    noteSetFnSerialDefault_Parameters.writefn = write_fn_;
+    noteSetFnSerialDefault_Parameters.availfn = avail_fn_;
+    noteSetFnSerialDefault_Parameters.readfn = read_fn_;
+}
+
+void
 NoteSetFnTransaction(
     txnStartFn start_fn_,
     txnStopFn stop_fn_
@@ -292,6 +411,28 @@ NoteSetFnTransaction(
     // Stash parameter(s)
     noteSetFnTransaction_Parameters.startfn = start_fn_;
     noteSetFnTransaction_Parameters.stopfn = stop_fn_;
+}
+
+void
+NoteSetI2CAddress(
+    uint32_t i2c_addr_
+) {
+    // Record invocation(s)
+    ++noteSetI2CAddress_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteSetI2CAddress_Parameters.i2caddr = i2c_addr_;
+}
+
+void
+NoteSetI2CMtu(
+    uint32_t i2c_mtu_
+) {
+    // Record invocation(s)
+    ++noteSetI2CMtu_Parameters.invoked;
+
+    // Stash parameter(s)
+    noteSetI2CMtu_Parameters.i2cmtu = i2c_mtu_;
 }
 
 void

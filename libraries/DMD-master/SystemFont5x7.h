@@ -30,7 +30,12 @@
  */
 
 #include <inttypes.h>
-#include <avr/pgmspace.h>
+#if defined(ESP32)
+  #include <pgmspace.h>
+#else
+  #include <avr/pgmspace.h>
+#endif
+
 
 #ifndef SYSTEM5x7_H
 #define SYSTEM5x7_H

@@ -17,8 +17,8 @@ char keys[ROWS][COLS] = {
   { '7', '8', '9' },
   { '*', '0', '#' }
 };
-byte rowPins[ROWS] = { 8, 13, 12, 11 };  // Connect to the row pins of the keypad
-byte colPins[COLS] = { 10, 9, 7 };       // Connect to the column pins of the keypad
+byte rowPins[ROWS] = { 7, 9, 10, 11 };  // Connect to the row pins of the keypad
+byte colPins[COLS] = { 12, 13, 8 };       // Connect to the column pins of the keypad
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 int gasThreshold = 400;        // Default gas threshold
@@ -37,35 +37,41 @@ void setup() {
   delay(3000);
   lcd.clear();
 
-  lcd.print(F("of alcohol"));
+  lcd.print(F("of GAS"));
   lcd.setCursor(0, 1);
   lcd.print(F("detection system"));
   delay(3000);
   lcd.clear();
 
-  // lcd.print(F("Ochogwu Charity"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("BPU/EEE/H/EEC/22/"));
-  // delay(3000);
-  // lcd.clear();
+  lcd.print(F("Abubakar Muhammad Muhammad"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150244"));
+  delay(3000);
+  lcd.clear();
 
-  // lcd.print(F("Ogbebo Ede Freeman"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("BPU/EEE/H/EEC/22/003"));
-  // delay(3000);
-  // lcd.clear();
+  lcd.print(F("Tahir Muktar"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150484"));
+  delay(3000);
+  lcd.clear();
 
-  // lcd.print(F("Samuel Shedrac Amodu"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("BPU/EEE/H/EEC/22/"));
-  // delay(3000);
-  // lcd.clear();
+  lcd.print(F("Eze Joseph Ozioma"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150220"));
+  delay(3000);
+  lcd.clear();
 
-  // lcd.print(F("Supervised by"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("Engr.John Odeh"));
-  // delay(3000);
-  // lcd.clear();
+  lcd.print(F("Elisha Nathaniel Bako"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("23/150390"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Engr.Muhammad Aminu Ahmad"));
+  delay(3000);
+  lcd.clear();
 }
 
 void loop() {

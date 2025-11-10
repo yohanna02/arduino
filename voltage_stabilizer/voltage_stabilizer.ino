@@ -19,7 +19,6 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 ZMPT101B inputSensor(INPUT_SENSOR_PIN, 50.0);
 ZMPT101B outputSensor(OUTPUT_SENSOR_PIN, 50.0);
 
-// --- Relay control (cumulative logic) ---
 void setRelay(int level) {
   digitalWrite(RELAY1, (level >= 1) ? HIGH : LOW);
   digitalWrite(RELAY2, (level >= 2) ? HIGH : LOW);

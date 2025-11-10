@@ -55,12 +55,10 @@ void setup() {
   lcd.init();       // Initialize the LCD
   lcd.backlight();  // Turn on the backlight
 
-  lcd.print(F("Development/"));
+  lcd.print(F("Development"));
   lcd.setCursor(0, 1);
-  lcd.print(F("Construction of"));
-  lcd.setCursor(0, 2);
   lcd.print(F("of a functional"));
-  lcd.setCursor(0, 3);
+  lcd.setCursor(0, 2);
   lcd.print(F("electrical"));
   delay(3000);
   lcd.clear();
@@ -105,7 +103,7 @@ void loop() {
     lcd.setCursor(0, 0);
     lcd.print(F("Select Mode"));
     lcd.setCursor(0, 1);
-    lcd.print(F("1. Bluetooth"));
+    lcd.print(F("1. Wireless"));
     lcd.setCursor(0, 2);
     lcd.print(F("2. Manual"));
 
@@ -118,7 +116,7 @@ void loop() {
       sys_mode = OP_MODE::BLUETOOTH;
 
       lcd.clear();
-      lcd.print(F("Bluetooth Mode"));
+      lcd.print(F("Wireless Mode"));
       delay(3000);
       lcd.clear();
     } else if (readingManual == LOW) {
@@ -138,8 +136,16 @@ void loop() {
     }
   }
 
+  bool shouldBluetoothStop = false;
+  if (BLUETOOTH_SERIAL.available()) {
+    if (BLUETOOTH_SERIAL.read() == 'S') {
+      shouldBluetoothStop = true;
+      BLUETOOTH_SERIAL.readString();
+    }
+  }
+
   int readingMenu = digitalRead(BTN_MENU);
-  if (readingMenu == LOW && (millis() - lastDebounceTimeMenu) > (debounceDelay + 100)) {
+  if ((readingMenu == LOW && (millis() - lastDebounceTimeMenu) > (debounceDelay + 100)) || shouldBluetoothStop) {
     lastDebounceTimeMenu = millis();
     if (running) {
       Timer1.disablePwm(pwmPin);
@@ -154,6 +160,11 @@ void loop() {
       lcd.print(F("Time: "));
       lcd.print(totalTimeSeconds);
       lcd.print(F(" s"));
+
+      lcd.setCursor(0, 2);
+      lcd.print(F("Data sent"));
+      String data = String(frequency) + ":" + String(amplitude) + ":" + String(pulseWidth) + ":" + String(totalTimeSeconds);
+      BLUETOOTH_SERIAL.print(data);
 
       delay(2000);
     }
@@ -198,27 +209,25 @@ void loop() {
     if (readingFrequency == LOW) {
       delay(debounceDelay);
 
-      if (sys_mode == OP_MODE::BLUETOOTH) {
-        unsigned long startPressMillis = millis();
-        bool longPress = false;
-        while (digitalRead(BTN_FREQUENCY) == LOW) {
-          if (millis() - startPressMillis > 2000) {
-            sys_mode = OP_MODE::NONE;
-            lcd.clear();
-            longPress = true;
-            break;
-          }
+      unsigned long startPressMillis = millis();
+      bool longPress = false;
+      while (digitalRead(BTN_FREQUENCY) == LOW) {
+        if (millis() - startPressMillis > 2000) {
+          sys_mode = OP_MODE::NONE;
+          lcd.clear();
+          longPress = true;
+          break;
         }
+      }
 
-        if (longPress) {
-          lcd.clear();
-          lcd.print(F("Data sent"));
-          String data = String(frequency) + ":" + String(amplitude) + ":" + String(pulseWidth);
-          BLUETOOTH_SERIAL.print(data);
-          delay(2000);
-          lcd.clear();
-          continue;
-        }
+      if (longPress) {
+        lcd.clear();
+        lcd.print(F("Data sent"));
+        String data = String(frequency) + ":" + String(amplitude) + ":" + String(pulseWidth) + ":" + String(totalTimeSeconds);
+        BLUETOOTH_SERIAL.print(data);
+        delay(2000);
+        lcd.clear();
+        continue;
       }
 
       if (select_param_state == SELECT_STATE_T::FREQ) {

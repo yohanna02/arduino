@@ -1,24 +1,17 @@
 /*
-   This file is part of ArduinoIoTCloud.
+  This file is part of the Arduino_ConnectionHandler library.
 
-   Copyright 2019 ARDUINO SA (http://www.arduino.cc/)
+  Copyright (c) 2024 Arduino SA
 
-   This software is released under the GNU General Public License version 3,
-   which covers the main part of arduino-cli.
-   The terms of this license can be found at:
-   https://www.gnu.org/licenses/gpl-3.0.en.html
-
-   You can be released from the requirements of the above licenses by purchasing
-   a commercial license. Buying such a license is mandatory if you want to modify or
-   otherwise use the software for commercial activities involving the Arduino
-   software without disclosing the source code of your own applications. To purchase
-   a commercial license, send an email to license@arduino.cc.
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #pragma once
 
 /******************************************************************************
-   INCLUDES
+  INCLUDES
  ******************************************************************************/
 
 #if defined __has_include
@@ -154,7 +147,7 @@
 #endif // BOARD_HAS_NOTECARD
 
 /******************************************************************************
-   TYPEDEFS
+  TYPEDEFS
  ******************************************************************************/
 
 enum class NetworkConnectionState : unsigned int {
@@ -174,6 +167,7 @@ enum class NetworkConnectionEvent {
 };
 
 enum class NetworkAdapter {
+  NONE,
   WIFI,
   ETHERNET,
   NB,
@@ -184,21 +178,35 @@ enum class NetworkAdapter {
   NOTECARD
 };
 
+union TimeoutTable {
+  struct {
+    // Note: order of the following values must be preserved
+    // and match against NetworkConnectionState values
+    uint32_t init;
+    uint32_t connecting;
+    uint32_t connected;
+    uint32_t disconnecting;
+    uint32_t disconnected;
+    uint32_t closed;
+    uint32_t error;
+  } timeout;
+  uint32_t intervals[sizeof(timeout) / sizeof(uint32_t)];
+};
+
 /******************************************************************************
-   CONSTANTS
+  CONSTANTS
  ******************************************************************************/
 
-static unsigned int const CHECK_INTERVAL_TABLE[] =
-{
-  /* INIT          */ 100,
+constexpr TimeoutTable DefaultTimeoutTable {
 #if defined(BOARD_HAS_NOTECARD) || defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-  /* CONNECTING    */ 4000,
+  4000,   // init
 #else
-  /* CONNECTING    */ 500,
+  500,    // init
 #endif
-  /* CONNECTED     */ 10000,
-  /* DISCONNECTING */ 100,
-  /* DISCONNECTED  */ 1000,
-  /* CLOSED        */ 1000,
-  /* ERROR         */ 1000
+  500,    // connecting
+  10000,  // connected
+  100,    // disconnecting
+  1000,   // disconnected
+  1000,   // closed
+  1000,   // error
 };
