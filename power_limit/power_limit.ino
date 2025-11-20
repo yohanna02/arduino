@@ -2,11 +2,10 @@
 #include <ZMPT101B.h>
 #include <LiquidCrystal_I2C.h>
 
-
 #define VOLTAGE_SENSOR_PIN A1
 #define CURRENT_SENSOR_PIN A0
 
-#define RELAY_PIN 6
+#define RELAY_PIN 2
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 ACS712 current_sensor(ACS712_05B, CURRENT_SENSOR_PIN);
@@ -67,6 +66,7 @@ void setup() {
   lcd.print(F("Engr.Dr.Ahmad M.Y Jumba"));
   delay(3000);
   lcd.clear();
+  digitalWrite(RELAY_PIN, HIGH);
 }
 
 void loop() {
@@ -74,6 +74,7 @@ void loop() {
 
   float Vrms = 225;
   float Irms = readCurrentWithCheck(current_sensor);
+  // float Irms = current_sensor.getCurrentAC();
   float realPower = Vrms * Irms;
 
   lcd.setCursor(0, 0);
@@ -82,12 +83,13 @@ void loop() {
   lcd.print(F("W     "));
   lcd.setCursor(0, 1);
 
-  if (realPower < 600) {
+  if (realPower < 300) {
     lcd.print(F("System Normal        "));
     digitalWrite(RELAY_PIN, HIGH);
   } else {
     lcd.print(F("System Overload      "));
     digitalWrite(RELAY_PIN, LOW);
+    delay(10000);
   }
 }
 

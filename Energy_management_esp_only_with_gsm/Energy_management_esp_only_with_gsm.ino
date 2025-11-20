@@ -43,6 +43,8 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 float energyLimit = 0.0;
 float realPower = 0.0;
+float energyConsumed = 0.0;
+unsigned long lastEnergyUpdate = 0;
 
 unsigned long prevMillis = 0;
 
@@ -136,16 +138,26 @@ void loop() {
       lcd.setCursor(0, 1);
       lcd.print(value);
     }
+  } else if (key == 'A') {
+    digitalWrite(RELAY_PIN, HIGH);
   }
 
   float Vrms = 220;
   float Irms = readCurrentWithCheck(current_sensor);
   realPower = Vrms * Irms;
 
+  unsigned long now = millis();
+  float deltaTimeHours = (now - lastEnergyUpdate) / 3600000.0;
+  lastEnergyUpdate = now;
+
+  float energyThisLoop = realPower * deltaTimeHours;
+
+  energyConsumed += energyThisLoop;
+
   lcd.setCursor(0, 0);
-  lcd.print(F("Load: "));
-  lcd.print(realPower);
-  lcd.print(F("W     "));
+  lcd.print(F("Energy: "));
+  lcd.print(energyConsumed);
+  lcd.print(F("Wh     "));
 
   lcd.setCursor(0, 1);
   if (energyLimit == 0) {
@@ -153,16 +165,16 @@ void loop() {
   } else {
     lcd.print(F("Limit: "));
     lcd.print(energyLimit);
-    lcd.print(F("W                 "));
+    lcd.print(F("Wh                 "));
   }
 
   if (millis() - prevMillis > 3000) {
-    Blynk.virtualWrite(V0, realPower);
+    Blynk.virtualWrite(V0, energyConsumed);
 
     prevMillis = millis();
   }
 
-  if (realPower > energyLimit && energyLimit != 0) {
+  if (energyConsumed > energyLimit && energyLimit != 0) {
     digitalWrite(RELAY_PIN, LOW);
   }
 

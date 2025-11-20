@@ -5,6 +5,7 @@
 #include <Adafruit_MLX90614.h>
 #include <MAX30100_PulseOximeter.h>
 #include <HX710AB.h>
+#include <ESPComm.h>
 
 // Pin Definitions
 #define SERVO_PIN 9
@@ -15,6 +16,7 @@
 #define HX_CLOCK_PIN 11
 
 // Objects
+ESPComm esp(Serial);
 Servo ventServo;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -47,8 +49,10 @@ enum InputMode { NONE, BPM, VOLUME };
 InputMode inputMode = NONE;
 String inputBuffer = "";
 
+unsigned long prevMillis = 0;
+
 void setup() {
-  Serial.begin(9600);
+  esp.begin(9600);
   lcd.init();
   lcd.backlight();
   ventServo.attach(SERVO_PIN);
@@ -199,4 +203,14 @@ void displaySensorData() {
   lcd.setCursor(0, 3);
   lcd.print("ECG:");
   lcd.print(ecgStatus);
+
+  if (millis() - prevMillis > 1000) {
+    esp.send("temp", temp);
+    esp.send("spo2", spo2);
+    esp.send("pressure", static_cast<int>(pressure));
+    esp.send("heartRate", heartRate);
+    ecgStatus == "Leads Off" ? esp.send("ecg", 0) : esp.send("ecg", ecgStatus);
+
+    prevMillis = millis();
+  }
 }

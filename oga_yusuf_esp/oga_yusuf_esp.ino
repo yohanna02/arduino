@@ -8,7 +8,7 @@
 #include <ESPComm.h>
 
 char ssid[] = "OIC_";
-char pass[] = "oichub@@1940";
+char pass[] = "oichub@@1920";
 
 WiFiClient client;
 
@@ -21,12 +21,21 @@ void setup() {
   esp.onCommand(onReceive);
 
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   esp.loop();
   Blynk.run();
+}
+
+BLYNK_CONNECTED() {
+  esp.send("WIFI", "CONNECT");
+}
+
+BLYNK_DISCONNECTED() {
+  esp.send("WIFI", "DISCONNECT");
 }
 
 void onReceive(String key, String value) {

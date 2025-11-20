@@ -28,84 +28,37 @@ void setup() {
   pinMode(PUMP_PIN, OUTPUT);
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Construction of"));
+  lcd.print(F("Design and"));
   lcd.setCursor(0, 1);
-  lcd.print(F("smart irrigation"));
+  lcd.print(F("implementation"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("system using"));
+  lcd.print(F("of a plant health"));
   lcd.setCursor(0, 1);
-  lcd.print(F("moisture senor"));
+  lcd.print(F("monitoring system"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Sohbin Nanman Tyem"));
+  lcd.print(F("Stephen Matthew ogbe"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/150211"));
+  lcd.print(F("BPU/EEE/H/EEP/23/10027"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Usman Abdulhamid"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("23/150688"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.print(F("Sixtus Kighir"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("23/152263"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.print(F("Jibrin Habibu"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("23/151229"));
-  delay(3000);
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.print(F("Bitrus Deborah"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("21/144565"));
+  lcd.print(F("Odoh Gabriel"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
   lcd.print(F("Supervised by"));
   lcd.setCursor(0, 1);
-  lcd.print(F("Mal.Adebayo Abdullahi"));
+  lcd.print(F("Engr.justin kpelai.A"));
   delay(3000);
   lcd.clear();
-
-  // lcd.print(F("Design and"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("construction"));
-  // delay(3000);
-
-  // lcd.clear();
-  // lcd.print(F("of a digital"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("soil moisture sensor"));
-  // delay(3000);
-
-  // lcd.clear();
-  // lcd.print(F("Anaja Faith Ejuile"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("17/48932U/2"));
-  // delay(3000);
-
-  // lcd.clear();
-  // lcd.print(F("Supervised by"));
-  // lcd.setCursor(0, 1);
-  // lcd.print(F("Prof. H.Kabri"));
-  // delay(3000);
-  // lcd.clear();
 }
 
 void loop() {

@@ -10,8 +10,9 @@
 #define ECHO_OUT 3
 
 // ---------------- MOTOR ----------------
-#define MOTOR_R 11
+#define MOTOR_R 12
 #define MOTOR_L 10
+#define MOTOR_EN 11
 
 // #define BUZZER 12
 
@@ -37,6 +38,52 @@ void setup() {
 
   pinMode(MOTOR_R, OUTPUT);
   pinMode(MOTOR_L, OUTPUT);
+  pinMode(MOTOR_EN, OUTPUT);
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("Design and"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Construction"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("of a microcontroller"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("based gate control"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("system with a"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("digital counter"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("BONHEUR,"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("ALLASRBAYE"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("23/151059"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("MAL.YAQOUB ISAH"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("ALJASAWI"));
+  delay(3000);
+  lcd.clear();
 }
 
 void loop() {
@@ -84,26 +131,29 @@ void loop() {
 }
 
 void motorOpen() {
-  analogWrite(MOTOR_R, 255);
-  analogWrite(MOTOR_L, 0);
+  digitalWrite(MOTOR_R, HIGH);
+  digitalWrite(MOTOR_L, LOW);
+  analogWrite(MOTOR_EN, 255);
   lcd.setCursor(0, 1);
   lcd.print("Gate Open       ");
-  delay(500);
+  delay(200);
   motorStop();
 }
 
 void motorClose() {
-  analogWrite(MOTOR_R, 0);
-  analogWrite(MOTOR_L, 255);
+  digitalWrite(MOTOR_R, LOW);
+  digitalWrite(MOTOR_L, HIGH);
+  analogWrite(MOTOR_EN, 255);
   lcd.setCursor(0, 1);
   lcd.print("Gate Closed     ");
-  delay(500);
+  delay(200);
   motorStop();
 }
 
 void motorStop() {
-  analogWrite(MOTOR_R, 0);
-  analogWrite(MOTOR_L, 0);
+  digitalWrite(MOTOR_R, LOW);
+  digitalWrite(MOTOR_L, LOW);
+  analogWrite(MOTOR_EN, 0);
 }
 
 long readDistance(int trigPin, int echoPin) {

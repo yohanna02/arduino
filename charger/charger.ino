@@ -6,7 +6,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define VOLTAGE A1
 #define CURRENT A0
 
-ACS712 currentSensor(ACS712_30A, CURRENT);
+ACS712 currentSensor(ACS712_05B, CURRENT);
 
 float readVoltage(int pin);
 float getSmoothedCurrent(ACS712& sensor, int samples = 20);
@@ -18,6 +18,42 @@ void setup() {
 
 
   currentSensor.calibrate();
+
+  lcd.print(F("Abubakar A Alkali"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/009"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Abubakar Ka,ilu darki"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/004"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Muhammad Adamu bomboy"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/003"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Muhammad Ibrahim Muhammad"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2022/nd/ret/010"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Saleh Abubakar Janda"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/005"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Mal.Muhammad Abubakar"));
+  delay(3000);
+  lcd.clear();
 }
 
 void loop() {

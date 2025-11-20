@@ -31,7 +31,44 @@ String value = "";
 
 void setup() {
   dht.begin();
-  lcd.begin(16, 2);  // ✅ changed from 20x4 to 16x2
+  lcd.begin(16, 2);
+
+  lcd.print(F("Mamman Muhammad Gimba"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/006"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Adamu Isah Gulani"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/008"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Ahmed Abdullahi"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/002"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Nuhu Abubakar"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/001"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Lawan Ali Usman"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("2023/nd/ret/007"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Abdullahi Umar Zakaria"));
+  delay(3000);
+  lcd.clear();
+
   lcd.print(F("Set Temp"));
   pinMode(FAN_ONE, OUTPUT);
   pinMode(HEATER_ONE, OUTPUT);

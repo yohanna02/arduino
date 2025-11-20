@@ -26,7 +26,7 @@ HX711 scale;
 int reading;
 int lastReading;
 
-#define CALIBRATION_FACTOR 86.413695652
+#define CALIBRATION_FACTOR 0.1468
 
 // Cylinder selection
 float cylinderCapacity = 0;  // grams
@@ -61,6 +61,7 @@ void setup() {
 
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.set_scale(CALIBRATION_FACTOR);
+  // scale.set_offset(-419431);
   scale.tare();
 
   lcd.setCursor(0, 0);
@@ -102,7 +103,7 @@ void loop() {
 
       lcd.setCursor(0, 0);
       lcd.print("Weight: ");
-      lcd.print(reading / 1000);
+      lcd.print(static_cast<float>(reading / 1000));
       lcd.print("kg           ");
 
       lcd.setCursor(0, 1);

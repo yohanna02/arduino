@@ -29,16 +29,16 @@
 #define LDR3_PIN A2
 
 // ---------------- RELAYS ----------------
-#define PUMP1_RELAY 30
-#define PUMP2_RELAY 31
+#define PUMP1_RELAY 22
+#define PUMP2_RELAY 23
 #define PUMP3_RELAY 29
 #define FAN1_RELAY 25
 #define FAN2_RELAY 26
 #define UV_RELAY 27
 #define HUMIDIFIER1_RELAY 28
 #define HUMIDIFIER2_RELAY 24
-#define FREE1_RELAY 22
-#define FREE2_RELAY 23
+#define FREE1_RELAY 30
+#define FREE2_RELAY 31
 
 // === ADC configuration ===
 const float ADC_REF = 5.0;
@@ -75,6 +75,9 @@ unsigned long lastAnalogRead = 0;
 unsigned long lastSendUpdate = 0;
 unsigned long lcdWakeMillis = 0;
 unsigned long wifiIconMillis = 0;
+unsigned long pumpMillis = 0;
+
+bool pumpOn = true;
 
 // --- Intervals (ms) ---
 #define DHT_INTERVAL 2000
@@ -82,9 +85,9 @@ unsigned long wifiIconMillis = 0;
 #define BMP_INTERVAL 1000
 #define ANALOG_INTERVAL 500
 #define LCD_ANIM_INTERVAL 250
-#define SEND_INTERVAL 5000   // 20 minutes
-// #define SEND_INTERVAL 1200000   // 20 minutes
-#define LCD_UPDATE 5000    // LCD auto-off after 30s of inactivity
+// #define SEND_INTERVAL 5000  // 20 minutes
+#define SEND_INTERVAL 1200000   // 20 minutes
+#define LCD_UPDATE 5000         // LCD auto-off after 30s of inactivity
 #define WIFI_ICON_SHOW_MS 4000  // show wifi icon for 4s when connect message arrives
 
 // --- Sensor values ---
@@ -172,7 +175,7 @@ void setup() {
   };
   for (unsigned i = 0; i < sizeof(relayPins) / sizeof(relayPins[0]); ++i) {
     pinMode(relayPins[i], OUTPUT);
-    digitalWrite(relayPins[i], LOW);  // ensure OFF
+    digitalWrite(relayPins[i], HIGH);  // ensure OFF
   }
 
   // LDR pins are analog inputs (no pinMode needed)
@@ -187,6 +190,7 @@ void setup() {
 
 // ---------------- loop ----------------
 void loop() {
+  runAutoControl();
   unsigned long now = millis();
   esp.loop();
   tempSensor1.update();
@@ -269,8 +273,105 @@ void loop() {
     wifiConnectedIcon = false;
   }
 
+  if  (millis() - pumpMillis > (60000*15)) {
+    pumpOn = !pumpOn;
+    pumpMillis = millis();
+  }
+
+  if (pumpOn) {
+    digitalWrite(PUMP1_RELAY, LOW);
+    digitalWrite(PUMP2_RELAY, LOW);
+    digitalWrite(PUMP3_RELAY, LOW);
+  } else {
+    digitalWrite(PUMP1_RELAY, HIGH);
+    digitalWrite(PUMP2_RELAY, HIGH);
+    digitalWrite(PUMP3_RELAY, HIGH);
+  }
+
   // (other non-blocking tasks can go here)
 }
+
+void runAutoControl() {
+
+  // ----------- AUTO TEMP CONTROL (Fans) -----------
+  // Example: turn fans ON when temp > 30°C, off when temp < 28°C (hysteresis)
+  static bool fanState = false;
+  float avgTemp = (ds18_1 + ds18_2 + ds18_3) / 3.0;  // or use DHT temp
+
+  if (!fanState && avgTemp > 25.0) {
+    digitalWrite(FAN1_RELAY, LOW);
+    digitalWrite(FAN2_RELAY, LOW);
+    fanState = true;
+  }
+  if (fanState && avgTemp < 20.0) {
+    digitalWrite(FAN1_RELAY, HIGH);
+    digitalWrite(FAN2_RELAY, HIGH);
+    fanState = false;
+  }
+
+
+  // ----------- AUTO HUMIDITY CONTROL -----------
+  // Turn humidifiers ON when humidity < 40%
+  // Turn OFF when > 55%
+  static bool humidifierState = false;
+  float avgHum = (dht1Hum + dht2Hum) / 2.0;
+
+  if (!humidifierState && avgHum < 60) {
+    digitalWrite(HUMIDIFIER1_RELAY, LOW);
+    digitalWrite(HUMIDIFIER2_RELAY, LOW);
+    humidifierState = true;
+  }
+  if (humidifierState && avgHum > 75) {
+    digitalWrite(HUMIDIFIER1_RELAY, HIGH);
+    digitalWrite(HUMIDIFIER2_RELAY, HIGH);
+    humidifierState = false;
+  }
+
+
+  // ----------- AUTO WATER QUALITY CONTROL -----------
+  // Example: pump clean water when TDS is too high
+  // TDS > 600 => flush
+  // TDS < 500 => stop flush
+  // static bool flushPumpState = false;
+
+  // if (!flushPumpState && tds1 > 600) {
+  //   digitalWrite(PUMP1_RELAY, HIGH);   // flush pump ON
+  //   flushPumpState = true;
+  // }
+  // if (flushPumpState && tds1 < 500) {
+  //   digitalWrite(PUMP1_RELAY, LOW);    // flush pump OFF
+  //   flushPumpState = false;
+  // }
+
+  // Example: nutrient pump when TDS too low
+  // static bool nutrientPumpState = false;
+
+  // if (!nutrientPumpState && tds1 < 300) {
+  //   digitalWrite(PUMP2_RELAY, HIGH);   // nutrient ON
+  //   nutrientPumpState = true;
+  // }
+  // if (nutrientPumpState && tds1 > 350) {
+  //   digitalWrite(PUMP2_RELAY, LOW);
+  //   nutrientPumpState = false;
+  // }
+
+
+  // ----------- AUTO pH CONTROL -----------
+  // Example: acid pump when pH > 6.8
+  // Example: base pump when pH < 5.8
+  // static bool acidState = false;
+  // static bool baseState = false;
+
+  // if (!acidState && ph1 > 6.8) {
+  //   digitalWrite(PUMP3_RELAY, HIGH);  // acid
+  //   acidState = true;
+  // }
+  // if (acidState && ph1 < 6.5) {
+  //   digitalWrite(PUMP3_RELAY, LOW);
+  //   acidState = false;
+  // }
+}
+
 
 void handleTemperatureChange1(int device, int32_t temperatureRAW) {
   ds18_1 = tempSensor1.rawToCelsius(temperatureRAW);
@@ -306,14 +407,14 @@ void handleKeypad() {
 // ---------------- LDR -> Relay logic ----------------
 void applyLdrRelays() {
   // Each LDR toggles a particular relay when it is "dark" (value < threshold)
-  if (ldr1 < LDR_THRESHOLD1) digitalWrite(UV_RELAY, HIGH);
-  else digitalWrite(UV_RELAY, LOW);
+  if (ldr1 < LDR_THRESHOLD1 || ldr2 < LDR_THRESHOLD2 || ldr3 < LDR_THRESHOLD3) digitalWrite(UV_RELAY, LOW);
+  else digitalWrite(UV_RELAY, HIGH);
 
-  if (ldr2 < LDR_THRESHOLD2) digitalWrite(FREE1_RELAY, HIGH);
-  else digitalWrite(FREE1_RELAY, LOW);
+  // if (ldr2 < LDR_THRESHOLD2) digitalWrite(FREE1_RELAY, HIGH);
+  // else digitalWrite(FREE1_RELAY, LOW);
 
-  if (ldr3 < LDR_THRESHOLD3) digitalWrite(FREE2_RELAY, HIGH);
-  else digitalWrite(FREE2_RELAY, LOW);
+  // if (ldr3 < LDR_THRESHOLD3) digitalWrite(FREE2_RELAY, HIGH);
+  // else digitalWrite(FREE2_RELAY, LOW);
 }
 
 // ---------------- LCD drawing & groups ----------------
@@ -334,13 +435,13 @@ void updateLCD() {
 void drawGroupTemperatures() {
   // Row 0: DHT temps with thermometer icon
   lcd.setCursor(0, 0);
-  lcd.print(" DHT1:");
+  lcd.print("T1:");
   if (!isnan(dht1Temp)) lcd.print(dht1Temp, 1);
   else lcd.print("ERR");
   lcd.print((char)223);  // degree symbol
   lcd.print("C");
 
-  lcd.print(" DHT2:");
+  lcd.print(" T2:");
   if (!isnan(dht2Temp)) lcd.print(dht2Temp, 1);
   else lcd.print("ERR");
   lcd.print((char)223);
@@ -354,7 +455,7 @@ void drawGroupTemperatures() {
   lcd.print((char)223);
   lcd.print("C");
 
-  lcd.print("   DS2:");
+  lcd.print(" DS2:");
   if (!isnan(ds18_2)) lcd.print(ds18_2, 1);
   else lcd.print("ERR");
   lcd.print((char)223);
@@ -504,23 +605,9 @@ void onReceive(String key, String value) {
   if (key == "WIFI") {
     if (value == "CONNECT") {
       wifiConnectedIcon = true;
-      wifiIconMillis = millis();
-      // ensure LCD shows immediate WiFi icon
-      if (!lcdActive) {
-        lcdActive = true;
-        lcd.backlight();
-      }
-      lcdWakeMillis = millis();
-      activeGroup = 3;  // show WiFi / relays group
       updateLCD();
     } else if (value == "DISCONNECT") {
       wifiConnectedIcon = false;
-      // show brief message
-      if (!lcdActive) {
-        lcdActive = true;
-        lcd.backlight();
-      }
-      lcdWakeMillis = millis();
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("WiFi Disconnected");
