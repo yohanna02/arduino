@@ -7,13 +7,27 @@
 #include <BlynkSimpleEsp32.h>
 #include <ESPComm.h>
 
-char ssid[] = "OIC_";
-char pass[] = "oichub@@1920";
+char ssid[] = "Janga";
+char pass[] = "jangammadaki@";
+
+// WiFi name: Janga 
+// Password: jangammadaki@
 
 WiFiClient client;
 
 HardwareSerial mySerial(2);
 ESPComm esp(mySerial);
+
+#define SEND_INTERVAL (60000UL * 30)
+BlynkTimer timer;
+
+// --- Sensor values ---
+float dht1Temp = NAN, dht1Hum = NAN, dht2Temp = NAN, dht2Hum = NAN;
+float ds18_1 = NAN, ds18_2 = NAN, ds18_3 = NAN;
+float pressure = NAN;
+float tds1 = 0, tds2 = 0, tds3 = 0;
+float ph1 = 0, ph2 = 0, ph3 = 0;
+int ldr1 = 0, ldr2 = 0, ldr3 = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -21,13 +35,14 @@ void setup() {
   esp.onCommand(onReceive);
 
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
-  
+  timer.setInterval(SEND_INTERVAL, sendAll);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   esp.loop();
   Blynk.run();
+  timer.run();
 }
 
 BLYNK_CONNECTED() {
@@ -38,40 +53,72 @@ BLYNK_DISCONNECTED() {
   esp.send("WIFI", "DISCONNECT");
 }
 
+void sendAll() {
+  sendDHT();
+  timer.setTimeout(60000UL, sendDS18);
+  timer.setTimeout(60000UL * 2, sendTDS);
+  timer.setTimeout(60000UL * 3, sendPH);
+}
+
+void sendDHT() {
+  Blynk.virtualWrite(V0, dht1Temp);
+  Blynk.virtualWrite(V1, dht1Hum);
+  Blynk.virtualWrite(V2, dht2Temp);
+  Blynk.virtualWrite(V3, dht2Hum);
+}
+
+void sendDS18() {
+  Blynk.virtualWrite(V4, ds18_1);
+  Blynk.virtualWrite(V5, ds18_2);
+  Blynk.virtualWrite(V6, ds18_3);
+}
+
+void sendTDS() {
+  Blynk.virtualWrite(V8, tds1);
+  Blynk.virtualWrite(V9, tds2);
+  Blynk.virtualWrite(V10, tds3);
+}
+
+void sendPH() {
+  Blynk.virtualWrite(V11, ph1);
+  Blynk.virtualWrite(V12, ph2);
+  Blynk.virtualWrite(V13, ph3);
+
+  Blynk.virtualWrite(V7, pressure);
+}
+
 void onReceive(String key, String value) {
   if (key == "DHT1_Temp") {
-    Blynk.virtualWrite(V0, value.toFloat());
+    dht1Temp = value.toFloat();
   } else if (key == "DHT1_Hum") {
-    Blynk.virtualWrite(V1, value.toInt());
+    dht1Hum = value.toInt();
   } else if (key == "DHT2_Temp") {
-    Blynk.virtualWrite(V2, value.toFloat());
+    dht2Temp = value.toFloat();
   } else if (key == "DHT2_Hum") {
-    Blynk.virtualWrite(V3, value.toInt());
+    dht2Hum = value.toInt();
   } else if (key == "DS18_1") {
-    Blynk.virtualWrite(V4, value.toFloat());
+    ds18_1 = value.toFloat();
   } else if (key == "DS18_2") {
-    Blynk.virtualWrite(V5, value.toFloat());
+    ds18_2 = value.toFloat();
   } else if (key == "DS18_3") {
-    Blynk.virtualWrite(V6, value.toFloat());
+    ds18_3 = value.toFloat();
   } else if (key == "Pressure") {
-    Blynk.virtualWrite(V7, value.toFloat());
+    pressure = value.toFloat();
   } else if (key == "TDS1") {
-    Blynk.virtualWrite(V8, value.toFloat());
+    tds1 = value.toFloat();
   } else if (key == "TDS2") {
-    Blynk.virtualWrite(V9, value.toFloat());
+    tds2 = value.toFloat();
   } else if (key == "TDS3") {
-    Blynk.virtualWrite(V10, value.toFloat());
+    tds3 = value.toFloat();
   } else if (key == "PH1") {
-    Blynk.virtualWrite(V11, value.toFloat());
+    ph1 = value.toFloat();
   } else if (key == "PH2") {
-    Blynk.virtualWrite(V12, value.toFloat());
+    ph2 = value.toFloat();
   } else if (key == "PH3") {
-    Blynk.virtualWrite(V13, value.toFloat());
-  } else if (key == "LDR1") {
-    Blynk.virtualWrite(V14, value.toFloat());
-  } else if (key == "LDR2") {
-    Blynk.virtualWrite(V15, value.toFloat());
-  } else if (key == "LDR3") {
-    Blynk.virtualWrite(V16, value.toFloat());
+    ph3 = value.toFloat();
+  } else if (key == "PUMP") {
+    Blynk.virtualWrite(V14, value.toInt());
+  } else if (key == "LIGHT") {
+    Blynk.virtualWrite(V15, value.toInt());
   }
 }

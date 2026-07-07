@@ -3,7 +3,7 @@
 #include <ESPComm.h>
 
 char ssid[] = "OIC_";  // your network SSID (name)
-char pass[] = "oichub@@1920";  // your network password
+char pass[] = "oichub@@1910";  // your network password
 WiFiClient client;
 
 unsigned long myChannelNumber = 3163591;

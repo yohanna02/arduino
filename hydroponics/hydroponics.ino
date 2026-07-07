@@ -75,37 +75,58 @@ void setup() {
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("of hydroponics"));
+  lcd.print(F("of IoT-based"));
   lcd.setCursor(0, 1);
-  lcd.print(F("system"));
+  lcd.print(F("hydroponic system"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Bill Clinton Abdou"));
+  lcd.print(F("for Smart"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/1111/0014"));
+  lcd.print(F("farming"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Abubakar Salisu Maitaya"));
+  lcd.print(F("IBRAHIM MUSA"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/1111B/0016"));
+  lcd.print(F("HND/EE/ET/008"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Amyinidai David"));
+  lcd.print(F("MUSTAPHA M.MAJIDADI"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/1111B/0014"));
+  lcd.print(F("HND/EE/ET/005"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Abdulkakir Abdulahi"));
+  lcd.print(F("ABUBAKAR MUSA"));
   lcd.setCursor(0, 1);
-  lcd.print(F("23/1111/0025"));
+  lcd.print(F("HND/EE/PM/005"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("HUSSAINI ADAMU"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("HND/EE/PM/009"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("ABDULHAMID S.AKIYA"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("HND/EE/PM/015"));
+  delay(3000);
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Engr Aishatu G.Ali"));
   delay(3000);
   lcd.clear();
 }

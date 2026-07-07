@@ -60,21 +60,23 @@ SUPERVISOR: ENGR. Agbo Victor */
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Ochiwu Daniel ogigbo"));
+  lcd.print(F("Khalid A.Ghaji"));
   lcd.setCursor(0, 1);
-  lcd.print(F("EEP/23/10028"));
+  lcd.print(F("HND/EE/PM/010"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
-  lcd.print(F("Tertsea Aondosoo Solomon"));
+  lcd.print(F("Isah ilyasu"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("HND/EE/PM/017"));
   delay(3000);
   lcd.clear();
 
   lcd.setCursor(0, 0);
   lcd.print(F("Supervised by"));
   lcd.setCursor(0, 1);
-  lcd.print(F("ENGR. Agbo Victor"));
+  lcd.print(F("Abubakar Hamisu"));
   delay(3000);
   lcd.clear();
 }

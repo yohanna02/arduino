@@ -51,7 +51,7 @@ void setup() {
 
   // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
-  scrollText("Design and Construction of digital clock woth calendar By Group 6 ND2");
+  // scrollText("Design and Construction of digital clock woth calendar By Group 6 ND2");
   
 }
 

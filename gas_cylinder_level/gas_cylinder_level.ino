@@ -11,6 +11,7 @@ ESPComm esp(Serial);
 #define GSM_SERIAL _serial
 
 #define PWRKEY_PIN A2
+// #define NUMBER "+2349022107944"
 #define NUMBER "+2347064391008"
 
 #define LOADCELL_DOUT_PIN 2
@@ -21,16 +22,20 @@ ESPComm esp(Serial);
 #define BTN_KG3 6
 #define BTN_KG6 5
 
+// Typical empty (tare) weights in kg
+#define TARE_3KG 3.0
+#define TARE_6KG 5.0
+
+float cylinderCapacity = 0;  // kg of gas
+float cylinderTare = 0;      // empty cylinder weight (kg)
+bool cylinderSelected = false;
+
 // HX711
 HX711 scale;
-int reading;
-int lastReading;
+float reading;
+float lastReading;
 
-#define CALIBRATION_FACTOR 0.1468
-
-// Cylinder selection
-float cylinderCapacity = 0;  // grams
-bool cylinderSelected = false;
+#define CALIBRATION_FACTOR -18050
 
 // Gas sensor threshold (adjust experimentally)
 #define GAS_THRESHOLD 450
@@ -60,9 +65,10 @@ void setup() {
 
 
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(CALIBRATION_FACTOR);
+  scale.set_scale();
   // scale.set_offset(-419431);
   scale.tare();
+  scale.set_scale(CALIBRATION_FACTOR);
 
   lcd.setCursor(0, 0);
   lcd.print("Select Cylinder:");
@@ -74,17 +80,19 @@ void loop() {
   // If cylinder not selected yet
   if (!cylinderSelected) {
     if (!digitalRead(BTN_KG3)) {
-      cylinderCapacity = 3000;  // grams
+      cylinderCapacity = 3.0;
+      cylinderTare = TARE_3KG;
       cylinderSelected = true;
       lcd.clear();
-      lcd.print("3kg Cylinder Sel");
+      lcd.print("3kg Cylinder");
       delay(1500);
       lcd.clear();
     } else if (!digitalRead(BTN_KG6)) {
-      cylinderCapacity = 6000;  // grams
+      cylinderCapacity = 6.0;
+      cylinderTare = TARE_6KG;
       cylinderSelected = true;
       lcd.clear();
-      lcd.print("6kg Cylinder Sel");
+      lcd.print("6kg Cylinder");
       delay(1500);
       lcd.clear();
     }
@@ -93,23 +101,29 @@ void loop() {
 
   // --- Weight Monitoring ---
   if (scale.wait_ready_timeout(200)) {
-    reading = round(scale.get_units());
+    reading = scale.get_units();  // total weight (kg)
+    float gasWeight = reading - cylinderTare;
+
+    if (gasWeight < 0) gasWeight = 0;
+    if (gasWeight > cylinderCapacity) gasWeight = cylinderCapacity;
 
     unsigned long currentMillis = millis();
 
     if (reading != lastReading && currentMillis - displayMillis > 4000) {
-      float percent = (reading / cylinderCapacity) * 100.0;
+      float percent = (gasWeight / cylinderCapacity) * 100.0;
       if (percent < 0) percent = 0;  // avoid negative
 
       lcd.setCursor(0, 0);
-      lcd.print("Weight: ");
-      lcd.print(static_cast<float>(reading / 1000));
-      lcd.print("kg           ");
+      lcd.print("Cylinder: ");
+      lcd.print(cylinderCapacity, 0);
+      // lcd.print(reading, 0);
+      lcd.print("kg      ");
 
       lcd.setCursor(0, 1);
       lcd.print("Level: ");
       lcd.print(percent, 1);
-      lcd.print("%           ");
+      // lcd.print(gasWeight, 1);
+      lcd.print("%        ");
 
       if (currentMillis - prevMillis > 20000) {
         esp.send("PERCENT", percent);
@@ -123,6 +137,9 @@ void loop() {
 
   // --- Gas Leakage Detection ---
   int gasValue = analogRead(GAS_PIN);
+  // lcd.setCursor(0, 0);
+  // lcd.print(gasValue);
+  // lcd.print(F("   "));
   if (gasValue > GAS_THRESHOLD) {
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -142,6 +159,7 @@ void loop() {
 
     delay(2000);  // Show warning for 2s
     lcd.clear();
+    digitalWrite(BUZZER_PIN, LOW);
   } else {
     if (sent) {
       sent = false;
@@ -192,7 +210,10 @@ void processLine(String line) {
 
     // check your command
     if (smsContent.indexOf("STATUS") != -1) {
-      float percent = (reading / cylinderCapacity) * 100.0;
+      float gasWeight = reading - cylinderTare;
+      if (gasWeight < 0) gasWeight = 0;
+
+      float percent = (gasWeight / cylinderCapacity) * 100.0;
       String message = "Cylinder at " + String(percent) + "%";
       sendSMS(NUMBER, message.c_str());
     }

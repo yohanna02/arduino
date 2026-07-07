@@ -87,26 +87,35 @@ String getDigits(int len, const char *prompt) {
 
 void setup() {
   lcd.begin(16, 2);
-  lcd.print(F("The Federal"));
+
+  lcd.print(F("Design and"));
   lcd.setCursor(0, 1);
-  lcd.print(F("Polytechic Bauchi"));
+  lcd.print(F("construction"));
   delay(3000);
   lcd.clear();
-  lcd.print(F("Department of"));
+
+  lcd.print(F("of a password"));
   lcd.setCursor(0, 1);
-  lcd.print(F("electrical and"));
+  lcd.print(F("based circuit"));
   delay(3000);
   lcd.clear();
-  lcd.print(F("electronics"));
-  lcd.setCursor(0, 1);
-  lcd.print(F("engineering"));
+
+  lcd.print(F("breaker"));
   delay(3000);
   lcd.clear();
-  lcd.print(F("Fatima"));
+
+  lcd.print(F("Emmanuel Yakubu"));
   lcd.setCursor(0, 1);
-  lcd.print(F("Muhammad"));
+  lcd.print(F("TSU/FEN/EE/20/1006"));
   delay(3000);
   lcd.clear();
+
+  lcd.print(F("Supervised by"));
+  lcd.setCursor(0, 1);
+  lcd.print(F("Engr.Abel Amos Noku"));
+  delay(3000);
+  lcd.clear();
+
   for (int i = 0; i < 3; i++) {
     pinMode(relays[i].pin, OUTPUT);
     setRelay(relays[i], true);  // all ON by default

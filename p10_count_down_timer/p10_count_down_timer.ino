@@ -68,7 +68,8 @@ void setup() {
   dmd.clearScreen(true);
 
   // Startup message
-  showMarquee("Reformed Levites", 17);
+  const char *msg = "Chapel of Victory";
+  showMarquee(msg, strlen(msg));
   delay(2000);
 
   // Idle message
@@ -79,7 +80,7 @@ void loop() {
   // Check if new time was sent via Bluetooth
   if (Serial.available()) {
     String value = Serial.readString();
-    if (value == "start") {
+    if (value == "A") {
       if (countdownTime > 0) {
         lastUpdate = millis();
         running = true;
@@ -87,13 +88,13 @@ void loop() {
       return;
     }
 
-    if (value == "stop") {
+    if (value == "B") {
       running = false;
       return;
     }
 
     long newTime = value.toInt();
-    if (newTime > 0) {
+    if (newTime >= 0) {
       countdownTime = newTime;
       running = false;
       waiting = false;

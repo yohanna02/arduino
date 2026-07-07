@@ -7,21 +7,22 @@
 #include <DHT.h>
 #include <Keypad.h>
 #include <ESPComm.h>
+#include "TDSSensor.h"
 
 // ---------------- SENSORS ----------------
 #define DHT1_PIN 2
 #define DHT2_PIN 3
 
-#define TDS1_PIN A6
-#define TDS2_PIN A7
+#define TDS1_PIN A7
+#define TDS2_PIN A6
 #define TDS3_PIN A8
 
-#define PH1_PIN A3
-#define PH2_PIN A4
+#define PH1_PIN A4
+#define PH2_PIN A3
 #define PH3_PIN A5
 
-#define DS18B1_PIN A9
-#define DS18B2_PIN A10
+#define DS18B1_PIN A10
+#define DS18B2_PIN A9
 #define DS18B3_PIN A11
 
 #define LDR1_PIN A0
@@ -29,20 +30,20 @@
 #define LDR3_PIN A2
 
 // ---------------- RELAYS ----------------
-#define PUMP1_RELAY 22
-#define PUMP2_RELAY 23
-#define PUMP3_RELAY 29
-#define FAN1_RELAY 25
-#define FAN2_RELAY 26
-#define UV_RELAY 27
-#define HUMIDIFIER1_RELAY 28
-#define HUMIDIFIER2_RELAY 24
+// #define PUMP1_RELAY 27
+// #define PUMP2_RELAY 28
+// #define PUMP3_RELAY 29
+// #define FAN1_RELAY 23
+// #define FAN2_RELAY 24
+#define UV_RELAY 25
+// #define HUMIDIFIER1_RELAY 22
+// #define HUMIDIFIER2_RELAY 26
 #define FREE1_RELAY 30
 #define FREE2_RELAY 31
 
 // === ADC configuration ===
 const float ADC_REF = 5.0;
-const int ADC_RES = 1023;
+const float ADC_RES = 1023.0;
 
 // === TDS calibration ===
 #define TDS_FACTOR 0.5
@@ -65,6 +66,10 @@ OneWire oneWire3(DS18B3_PIN);
 DallasTemperature dallasTemp3(&oneWire3);
 NonBlockingDallas tempSensor3(&dallasTemp3);
 
+TDSSensor tds1(TDS1_PIN);
+TDSSensor tds2(TDS2_PIN);
+TDSSensor tds3(TDS3_PIN);
+
 ESPComm esp(Serial2);
 
 // --- Timers ---
@@ -73,28 +78,26 @@ unsigned long lastDS18Read = 0;
 unsigned long lastBMPRead = 0;
 unsigned long lastAnalogRead = 0;
 unsigned long lastSendUpdate = 0;
-unsigned long lcdWakeMillis = 0;
-unsigned long wifiIconMillis = 0;
-unsigned long pumpMillis = 0;
+unsigned long pumpOnMillis = 0;
+unsigned long pumpOffMillis = 0;
 
 bool pumpOn = true;
 
 // --- Intervals (ms) ---
-#define DHT_INTERVAL 2000
-#define DS18_INTERVAL 1000
-#define BMP_INTERVAL 1000
-#define ANALOG_INTERVAL 500
-#define LCD_ANIM_INTERVAL 250
-// #define SEND_INTERVAL 5000  // 20 minutes
-#define SEND_INTERVAL 1200000   // 20 minutes
-#define LCD_UPDATE 5000         // LCD auto-off after 30s of inactivity
-#define WIFI_ICON_SHOW_MS 4000  // show wifi icon for 4s when connect message arrives
+#define DHT_INTERVAL 5000
+#define DS18_INTERVAL 3000
+#define BMP_INTERVAL 5000
+#define ANALOG_INTERVAL 2000
+#define SEND_INTERVAL (60000UL * 30)
+
+#define PUMP_ON_INTERVAL (5UL * 60UL * 1000UL)  // 2 hours
+#define PUMP_OFF_INTERVAL (1UL * 60UL * 1000UL)        // 5 minutes
 
 // --- Sensor values ---
 float dht1Temp = NAN, dht1Hum = NAN, dht2Temp = NAN, dht2Hum = NAN;
 float ds18_1 = NAN, ds18_2 = NAN, ds18_3 = NAN;
 float pressure = NAN;
-float tds1 = 0, tds2 = 0, tds3 = 0;
+float tds_1 = 0, tds_2 = 0, tds_3 = 0;
 float ph1 = 0, ph2 = 0, ph3 = 0;
 int ldr1 = 0, ldr2 = 0, ldr3 = 0;
 
@@ -120,13 +123,12 @@ char keys[ROWS][COLS] = {
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // --- LDR thresholds (tweak based on your sensors) ---
-const int LDR_THRESHOLD1 = 400;  // below -> "dark" (turn relay ON)
-const int LDR_THRESHOLD2 = 400;
-const int LDR_THRESHOLD3 = 400;
+const int LDR_THRESHOLD1 = 890;  // below -> "dark" (turn relay ON)
+const int LDR_THRESHOLD2 = 890;
+const int LDR_THRESHOLD3 = 890;
 
 // --- Forward declarations ---
 float calculatePH(int pin);
-float readTDS(int pin, float temperature);
 float clampToZero(float val);
 void updateLCD();
 void drawGroupTemperatures();
@@ -137,11 +139,17 @@ void handleKeypad();
 void applyLdrRelays();
 void onReceive(String key, String value);
 
+int onCount = 1;
+
 // ---------------- setup ----------------
 void setup() {
   Serial.begin(115200);
   esp.begin(9600);
   esp.onCommand(onReceive);
+
+  tds1.begin();
+  tds2.begin();
+  tds3.begin();
 
   // init LCD
   lcd.init();
@@ -167,16 +175,18 @@ void setup() {
   }
 
   // Relay pins
-  const int relayPins[] = {
-    PUMP1_RELAY, PUMP2_RELAY, PUMP3_RELAY,
-    FAN1_RELAY, FAN2_RELAY, UV_RELAY,
-    HUMIDIFIER1_RELAY, HUMIDIFIER2_RELAY,
-    FREE1_RELAY, FREE2_RELAY
-  };
-  for (unsigned i = 0; i < sizeof(relayPins) / sizeof(relayPins[0]); ++i) {
-    pinMode(relayPins[i], OUTPUT);
-    digitalWrite(relayPins[i], HIGH);  // ensure OFF
-  }
+  // const int relayPins[] = {
+  //   PUMP1_RELAY, PUMP2_RELAY, PUMP3_RELAY,
+  //   FAN1_RELAY, FAN2_RELAY, UV_RELAY,
+  //   HUMIDIFIER1_RELAY, HUMIDIFIER2_RELAY,
+  //   FREE1_RELAY, FREE2_RELAY
+  // };
+  // for (unsigned i = 0; i < sizeof(relayPins) / sizeof(relayPins[0]); ++i) {
+  //   pinMode(relayPins[i], OUTPUT);
+  //   digitalWrite(relayPins[i], LOW);  // ensure OFF
+  // }
+    pinMode(UV_RELAY, OUTPUT);
+    digitalWrite(UV_RELAY, LOW);  // ensure OFF
 
   // LDR pins are analog inputs (no pinMode needed)
 
@@ -186,6 +196,9 @@ void setup() {
   lcd.print(F("System Ready"));
   lcd.setCursor(0, 1);
   lcd.print(F("Press A, B, C, D"));
+
+  delay(5000);
+  esp.send("PUMP", 1);
 }
 
 // ---------------- loop ----------------
@@ -196,6 +209,9 @@ void loop() {
   tempSensor1.update();
   tempSensor2.update();
   tempSensor3.update();
+  tds1.update();
+  tds2.update();
+  tds3.update();
   handleKeypad();
 
   // DHT sensors (non-blocking interval)
@@ -220,14 +236,14 @@ void loop() {
   // Analog sensors (TDS, pH, LDR)
   if (now - lastAnalogRead >= ANALOG_INTERVAL) {
     lastAnalogRead = now;
-    lastAnalogRead = now;
-    tds1 = readTDS(TDS1_PIN, ds18_1);
-    tds2 = readTDS(TDS2_PIN, ds18_1);
-    tds3 = readTDS(TDS3_PIN, ds18_1);
 
-    ph1 = calculatePH(PH1_PIN);
-    ph2 = calculatePH(PH2_PIN);
-    ph3 = calculatePH(PH3_PIN);
+    tds_1 = tds1.getTDS(ds18_1);
+    tds_2 = tds2.getTDS(ds18_2);
+    tds_3 = tds3.getTDS(ds18_3);
+
+    ph1 = calculatePH(PH1_PIN) + 6.5;
+    ph2 = calculatePH(PH2_PIN) + 6.5;
+    ph3 = calculatePH(PH3_PIN) + 6.5;
 
     ldr1 = analogRead(LDR1_PIN);
     ldr2 = analogRead(LDR2_PIN);
@@ -250,43 +266,35 @@ void loop() {
 
     esp.send("Pressure", pressure);
 
-    esp.send("TDS1", tds1);
-    esp.send("TDS2", tds2);
-    esp.send("TDS3", tds3);
+    esp.send("TDS1", tds_1);
+    esp.send("TDS2", tds_2);
+    esp.send("TDS3", tds_3);
 
     esp.send("PH1", ph1);
     esp.send("PH2", ph2);
     esp.send("PH3", ph3);
-
-    esp.send("LDR1", ldr1);
-    esp.send("LDR2", ldr2);
-    esp.send("LDR3", ldr3);
   }
 
-  if (now - lcdWakeMillis > LCD_UPDATE) {
-    updateLCD();
-    lcdWakeMillis = millis();
-  }
+  // if (now - pumpOffMillis > PUMP_OFF_INTERVAL && pumpOn) {
+  //   pumpOn = false;
+  //   pumpOnMillis = millis();
+  //   // esp.send("PUMP", 0);
+  //   // pumpOffMillis = millis();
+  // } else if (now - pumpOnMillis > PUMP_ON_INTERVAL && !pumpOn) {
+  //   pumpOn = true;
+  //   pumpOffMillis = millis();
+  //   // esp.send("PUMP", 1);
+  // }
 
-  // WiFi icon timeout
-  if (wifiConnectedIcon && (now - wifiIconMillis >= WIFI_ICON_SHOW_MS)) {
-    wifiConnectedIcon = false;
-  }
-
-  if  (millis() - pumpMillis > (60000*15)) {
-    pumpOn = !pumpOn;
-    pumpMillis = millis();
-  }
-
-  if (pumpOn) {
-    digitalWrite(PUMP1_RELAY, LOW);
-    digitalWrite(PUMP2_RELAY, LOW);
-    digitalWrite(PUMP3_RELAY, LOW);
-  } else {
-    digitalWrite(PUMP1_RELAY, HIGH);
-    digitalWrite(PUMP2_RELAY, HIGH);
-    digitalWrite(PUMP3_RELAY, HIGH);
-  }
+  // if (pumpOn) {
+  //   digitalWrite(PUMP1_RELAY, HIGH);
+  //   digitalWrite(PUMP2_RELAY, HIGH);
+  //   digitalWrite(PUMP3_RELAY, HIGH);
+  // } else {
+  //   digitalWrite(PUMP1_RELAY, LOW);
+  //   digitalWrite(PUMP2_RELAY, LOW);
+  //   digitalWrite(PUMP3_RELAY, LOW);
+  // }
 
   // (other non-blocking tasks can go here)
 }
@@ -294,38 +302,42 @@ void loop() {
 void runAutoControl() {
 
   // ----------- AUTO TEMP CONTROL (Fans) -----------
-  // Example: turn fans ON when temp > 30°C, off when temp < 28°C (hysteresis)
-  static bool fanState = false;
-  float avgTemp = (ds18_1 + ds18_2 + ds18_3) / 3.0;  // or use DHT temp
 
-  if (!fanState && avgTemp > 25.0) {
-    digitalWrite(FAN1_RELAY, LOW);
-    digitalWrite(FAN2_RELAY, LOW);
-    fanState = true;
-  }
-  if (fanState && avgTemp < 20.0) {
-    digitalWrite(FAN1_RELAY, HIGH);
-    digitalWrite(FAN2_RELAY, HIGH);
-    fanState = false;
-  }
+
+  // static bool tempState1 = false;
+  // static bool tempState2 = false;
+
+  // if (!tempState1 && dht1Temp > 25.0) {
+  //   digitalWrite(FAN1_RELAY, HIGH);
+  //   tempState1 = true;
+  // } else if (tempState1 && dht1Temp < 20.0) {
+  //   digitalWrite(FAN1_RELAY, LOW);
+  //   tempState1 = false;
+  // }
+
+  // if (!tempState2 && dht2Temp > 28.0) {
+  //   tempState2 = true;
+  //   digitalWrite(FAN2_RELAY, HIGH);
+  // } else if (tempState2 && dht2Temp < 20.0) {
+  //   digitalWrite(FAN2_RELAY, LOW);
+  //   tempState2 = false;
+  // }
 
 
   // ----------- AUTO HUMIDITY CONTROL -----------
-  // Turn humidifiers ON when humidity < 40%
-  // Turn OFF when > 55%
-  static bool humidifierState = false;
-  float avgHum = (dht1Hum + dht2Hum) / 2.0;
+  // static bool humidifierState = false;
+  // float avgHum = (dht1Hum + dht2Hum) / 2.0;
 
-  if (!humidifierState && avgHum < 60) {
-    digitalWrite(HUMIDIFIER1_RELAY, LOW);
-    digitalWrite(HUMIDIFIER2_RELAY, LOW);
-    humidifierState = true;
-  }
-  if (humidifierState && avgHum > 75) {
-    digitalWrite(HUMIDIFIER1_RELAY, HIGH);
-    digitalWrite(HUMIDIFIER2_RELAY, HIGH);
-    humidifierState = false;
-  }
+  // if (!humidifierState && avgHum < 60) {
+  //   digitalWrite(HUMIDIFIER1_RELAY, HIGH);
+  //   digitalWrite(HUMIDIFIER2_RELAY, HIGH);
+  //   humidifierState = true;
+  // }
+  // if (humidifierState && avgHum > 75) {
+  //   digitalWrite(HUMIDIFIER1_RELAY, LOW);
+  //   digitalWrite(HUMIDIFIER2_RELAY, LOW);
+  //   humidifierState = false;
+  // }
 
 
   // ----------- AUTO WATER QUALITY CONTROL -----------
@@ -407,8 +419,17 @@ void handleKeypad() {
 // ---------------- LDR -> Relay logic ----------------
 void applyLdrRelays() {
   // Each LDR toggles a particular relay when it is "dark" (value < threshold)
-  if (ldr1 < LDR_THRESHOLD1 || ldr2 < LDR_THRESHOLD2 || ldr3 < LDR_THRESHOLD3) digitalWrite(UV_RELAY, LOW);
-  else digitalWrite(UV_RELAY, HIGH);
+  if (ldr1 < LDR_THRESHOLD1 || ldr2 < LDR_THRESHOLD2 || ldr3 < LDR_THRESHOLD3) {
+    if (digitalRead(UV_RELAY) == LOW) {
+      esp.send("LIGHT", 1);
+    }
+    digitalWrite(UV_RELAY, HIGH);
+  } else {
+    if (digitalRead(UV_RELAY) == HIGH) {
+      esp.send("LIGHT", 0);
+    }
+    digitalWrite(UV_RELAY, LOW);
+  }
 
   // if (ldr2 < LDR_THRESHOLD2) digitalWrite(FREE1_RELAY, HIGH);
   // else digitalWrite(FREE1_RELAY, LOW);
@@ -436,8 +457,11 @@ void drawGroupTemperatures() {
   // Row 0: DHT temps with thermometer icon
   lcd.setCursor(0, 0);
   lcd.print("T1:");
-  if (!isnan(dht1Temp)) lcd.print(dht1Temp, 1);
-  else lcd.print("ERR");
+  if (!isnan(dht1Temp)) {
+    lcd.print(dht1Temp, 1);
+  } else {
+    lcd.print("ERR");
+  }
   lcd.print((char)223);  // degree symbol
   lcd.print("C");
 
@@ -469,13 +493,20 @@ void drawGroupTemperatures() {
   lcd.print((char)223);
   lcd.print("C");
 
-  lcd.setCursor(0, 3);
-  lcd.print("P:");
+  lcd.print(" P:");
   if (!isnan(pressure)) {
     float hpa = pressure / 100.0;
     lcd.print(hpa, 0);
     lcd.print("hPa");
   } else lcd.print("ERR");
+
+
+  // lcd.setCursor(0, 3);
+  // // show fan relay states
+  // lcd.print("F1:");
+  // lcd.print(digitalRead(FAN1_RELAY) ? "On " : "Off ");
+  // lcd.print(" F2:");
+  // lcd.print(digitalRead(FAN1_RELAY) ? "On " : "Off ");
 }
 
 // Group B: humidity
@@ -492,28 +523,28 @@ void drawGroupHumidity() {
   else lcd.print("ERR");
   lcd.print("%");
 
-  lcd.setCursor(0, 2);
-  lcd.print("Humidifiers:");
-  lcd.setCursor(0, 3);
-  // show humidifier relay states
-  lcd.print("H1:");
-  lcd.print(digitalRead(HUMIDIFIER1_RELAY) ? "On " : "Off ");
-  lcd.print(" H2:");
-  lcd.print(digitalRead(HUMIDIFIER2_RELAY) ? "On " : "Off ");
+  // lcd.setCursor(0, 2);
+  // lcd.print("Humidifiers:");
+  // lcd.setCursor(0, 3);
+  // // show humidifier relay states
+  // lcd.print("H1:");
+  // lcd.print(digitalRead(HUMIDIFIER1_RELAY) ? "On " : "Off ");
+  // lcd.print(" H2:");
+  // lcd.print(digitalRead(HUMIDIFIER2_RELAY) ? "On " : "Off ");
 }
 
 // Group C: TDS & pH
 void drawGroupWater() {
   lcd.setCursor(0, 0);
   lcd.print("TDS1:");
-  lcd.print(tds1, 0);
+  lcd.print(tds_1, 0);
 
   lcd.print("   TDS2:");
-  lcd.print(tds2, 0);
+  lcd.print(tds_2, 0);
 
   lcd.setCursor(0, 1);
   lcd.print("TDS3:");
-  lcd.print(tds3, 0);
+  lcd.print(tds_3, 0);
   lcd.print("   PH1:");
   lcd.print(ph1, 1);
 
@@ -548,10 +579,9 @@ void drawGroupLightRelay() {
   // WiFi icon + label
   lcd.setCursor(0, 3);
   if (wifiConnectedIcon) {
-    lcd.print(" WiFi: Connected");
+    lcd.print(" WiFi: Connected ");
   } else {
-    lcd.print(" WiFi: ");
-    lcd.print(wifiConnectedIcon ? "On " : "Off");
+    lcd.print(" WiFi: Discounted");
   }
 }
 
@@ -583,17 +613,6 @@ float calculatePH(int pin) {
   float calibration_value = 21.34 - 0.7;
   float ph = -5.70 * voltage + calibration_value;
   return constrain(ph, 0.0, 14.0);
-}
-
-float readTDS(int pin, float temperature) {
-  int reading = analogRead(pin);
-  float voltage = reading * ADC_REF / ADC_RES;
-  float compensationCoefficient = 1.0 + 0.02 * (temperature - 25.0);
-  float compensatedVoltage = voltage / compensationCoefficient;
-  float ec = (133.42 * pow(compensatedVoltage, 3))
-             - (255.86 * pow(compensatedVoltage, 2))
-             + (857.39 * compensatedVoltage);
-  return clampToZero(ec * TDS_FACTOR);
 }
 
 float clampToZero(float val) {
