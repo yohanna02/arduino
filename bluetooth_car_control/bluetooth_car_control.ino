@@ -1,16 +1,16 @@
 #include <SoftwareSerial.h>
 
-SoftwareSerial esp_serial(2, 3);
+// SoftwareSerial esp_serial(2, 3);
 
-#define _serial esp_serial
+#define _serial Serial
 
 // Motor pins
-int motorA1 = 8;
-int motorA2 = 7;
+int motorA1 = 4;
+int motorA2 = 5;
 int motorB1 = 6;
-int motorB2 = 5;
+int motorB2 = 7;
 
-int ENA = 10;
+int ENA = 3;
 int ENB = 9;
 
 // Ultrasonic pins
@@ -37,8 +37,8 @@ void setup() {
   pinMode(ENB, OUTPUT);
 
   // Ultrasonic pins
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  // pinMode(trigPin, OUTPUT);
+  // pinMode(echoPin, INPUT);
 
   Stop();
 }
@@ -51,17 +51,19 @@ void loop() {
   }
 
   // Always check distance
-  distance = getDistance();
+  // distance = getDistance();
 
-  // If moving forward and obstacle appears
-  if (lastCommand == 'F' && distance <= safeDistance) {
-    Serial.println("Obstacle detected! Turning right...");
-    turnRightFor(500); // Turn right for 500ms
-    lastCommand = 'F'; // Continue moving forward after turning
-  } else {
-    // Continue executing last command
-    executeCommand(lastCommand);
-  }
+  // // If moving forward and obstacle appears
+  // if (lastCommand == 'F' && distance <= safeDistance) {
+  //   Serial.println("Obstacle detected! Turning right...");
+  //   turnRightFor(500); // Turn right for 500ms
+  //   lastCommand = 'F'; // Continue moving forward after turning
+  // } else {
+  //   // Continue executing last command
+  //   executeCommand(lastCommand);
+  // }
+
+  executeCommand(command);
 }
 
 // Execute stored command
@@ -104,19 +106,19 @@ int getDistance() {
 void forward() {
   analogWrite(ENA, 200);
   analogWrite(ENB, 200);
-  digitalWrite(motorA1, HIGH);
-  digitalWrite(motorA2, LOW);
-  digitalWrite(motorB1, HIGH);
-  digitalWrite(motorB2, LOW);
+  digitalWrite(motorA1, LOW);
+  digitalWrite(motorA2, HIGH);
+  digitalWrite(motorB1, LOW);
+  digitalWrite(motorB2, HIGH);
 }
 
 void back() {
   analogWrite(ENA, 200);
   analogWrite(ENB, 200);
-  digitalWrite(motorA1, LOW);
-  digitalWrite(motorA2, HIGH);
-  digitalWrite(motorB1, LOW);
-  digitalWrite(motorB2, HIGH);
+  digitalWrite(motorA1, HIGH);
+  digitalWrite(motorA2, LOW);
+  digitalWrite(motorB1, HIGH);
+  digitalWrite(motorB2, LOW);
 }
 
 void left() {
@@ -124,15 +126,15 @@ void left() {
   analogWrite(ENB, 200);
   digitalWrite(motorA1, LOW);
   digitalWrite(motorA2, LOW);
-  digitalWrite(motorB1, HIGH);
-  digitalWrite(motorB2, LOW);
+  digitalWrite(motorB1, LOW);
+  digitalWrite(motorB2, HIGH);
 }
 
 void right() {
   analogWrite(ENA, 200);
   analogWrite(ENB, 0);
-  digitalWrite(motorA1, HIGH);
-  digitalWrite(motorA2, LOW);
+  digitalWrite(motorA1, LOW);
+  digitalWrite(motorA2, HIGH);
   digitalWrite(motorB1, LOW);
   digitalWrite(motorB2, LOW);
 }

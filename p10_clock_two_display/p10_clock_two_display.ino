@@ -91,11 +91,8 @@ void loop() {
     char timeStr[] = "hh:mm:ss";
     now.toString(timeStr);
 
-    // Update only if different (prevents unnecessary redraw)
-    // if (strcmp(timeStr, lastShownTime) != 0) {
     strcpy(lastShownTime, timeStr);
     dmd.clearScreen(true);
     dmd.drawString(4, 0, timeStr, 8, GRAPHICS_NORMAL);
-    // }
   }
 }

@@ -30,9 +30,9 @@
 #define LDR3_PIN A2
 
 // ---------------- RELAYS ----------------
-// #define PUMP1_RELAY 27
-// #define PUMP2_RELAY 28
-// #define PUMP3_RELAY 29
+#define PUMP1_RELAY 27
+#define PUMP2_RELAY 28
+#define PUMP3_RELAY 29
 // #define FAN1_RELAY 23
 // #define FAN2_RELAY 24
 #define UV_RELAY 25
@@ -78,10 +78,11 @@ unsigned long lastDS18Read = 0;
 unsigned long lastBMPRead = 0;
 unsigned long lastAnalogRead = 0;
 unsigned long lastSendUpdate = 0;
-unsigned long pumpOnMillis = 0;
-unsigned long pumpOffMillis = 0;
+unsigned long pump12LastChange = 0;
+unsigned long pump3LastChange = 0;
 
-bool pumpOn = true;
+bool pump12On = true;
+bool pump3On = true;
 
 // --- Intervals (ms) ---
 #define DHT_INTERVAL 5000
@@ -90,8 +91,10 @@ bool pumpOn = true;
 #define ANALOG_INTERVAL 2000
 #define SEND_INTERVAL (60000UL * 30)
 
-#define PUMP_ON_INTERVAL (5UL * 60UL * 1000UL)  // 2 hours
-#define PUMP_OFF_INTERVAL (1UL * 60UL * 1000UL)        // 5 minutes
+#define PUMP12_ON_INTERVAL (10UL * 60UL * 1000UL)
+#define PUMP12_OFF_INTERVAL (50UL * 60UL * 1000UL)
+#define PUMP3_ON_INTERVAL (15UL * 60UL * 1000UL)
+#define PUMP3_OFF_INTERVAL (45UL * 60UL * 1000UL)
 
 // --- Sensor values ---
 float dht1Temp = NAN, dht1Hum = NAN, dht2Temp = NAN, dht2Hum = NAN;
@@ -137,6 +140,7 @@ void drawGroupWater();
 void drawGroupLightRelay();
 void handleKeypad();
 void applyLdrRelays();
+void updatePumpTimers(unsigned long now);
 void onReceive(String key, String value);
 
 int onCount = 1;
@@ -175,18 +179,18 @@ void setup() {
   }
 
   // Relay pins
-  // const int relayPins[] = {
-  //   PUMP1_RELAY, PUMP2_RELAY, PUMP3_RELAY,
-  //   FAN1_RELAY, FAN2_RELAY, UV_RELAY,
-  //   HUMIDIFIER1_RELAY, HUMIDIFIER2_RELAY,
-  //   FREE1_RELAY, FREE2_RELAY
-  // };
-  // for (unsigned i = 0; i < sizeof(relayPins) / sizeof(relayPins[0]); ++i) {
-  //   pinMode(relayPins[i], OUTPUT);
-  //   digitalWrite(relayPins[i], LOW);  // ensure OFF
-  // }
-    pinMode(UV_RELAY, OUTPUT);
-    digitalWrite(UV_RELAY, LOW);  // ensure OFF
+  const int pumpRelayPins[] = {
+    PUMP1_RELAY, PUMP2_RELAY, PUMP3_RELAY
+  };
+  for (unsigned i = 0; i < sizeof(pumpRelayPins) / sizeof(pumpRelayPins[0]); ++i) {
+    pinMode(pumpRelayPins[i], OUTPUT);
+    digitalWrite(pumpRelayPins[i], HIGH);  // start pump cycle ON
+  }
+  pinMode(UV_RELAY, OUTPUT);
+  digitalWrite(UV_RELAY, LOW);  // ensure OFF
+
+  pump12LastChange = millis();
+  pump3LastChange = pump12LastChange;
 
   // LDR pins are analog inputs (no pinMode needed)
 
@@ -203,8 +207,9 @@ void setup() {
 
 // ---------------- loop ----------------
 void loop() {
-  runAutoControl();
   unsigned long now = millis();
+  runAutoControl();
+  updatePumpTimers(now);
   esp.loop();
   tempSensor1.update();
   tempSensor2.update();
@@ -275,28 +280,25 @@ void loop() {
     esp.send("PH3", ph3);
   }
 
-  // if (now - pumpOffMillis > PUMP_OFF_INTERVAL && pumpOn) {
-  //   pumpOn = false;
-  //   pumpOnMillis = millis();
-  //   // esp.send("PUMP", 0);
-  //   // pumpOffMillis = millis();
-  // } else if (now - pumpOnMillis > PUMP_ON_INTERVAL && !pumpOn) {
-  //   pumpOn = true;
-  //   pumpOffMillis = millis();
-  //   // esp.send("PUMP", 1);
-  // }
-
-  // if (pumpOn) {
-  //   digitalWrite(PUMP1_RELAY, HIGH);
-  //   digitalWrite(PUMP2_RELAY, HIGH);
-  //   digitalWrite(PUMP3_RELAY, HIGH);
-  // } else {
-  //   digitalWrite(PUMP1_RELAY, LOW);
-  //   digitalWrite(PUMP2_RELAY, LOW);
-  //   digitalWrite(PUMP3_RELAY, LOW);
-  // }
-
   // (other non-blocking tasks can go here)
+}
+
+void updatePumpTimers(unsigned long now) {
+  unsigned long pump12Interval = pump12On ? PUMP12_ON_INTERVAL : PUMP12_OFF_INTERVAL;
+  if (now - pump12LastChange >= pump12Interval) {
+    pump12On = !pump12On;
+    pump12LastChange = now;
+    digitalWrite(PUMP1_RELAY, pump12On ? HIGH : LOW);
+    digitalWrite(PUMP2_RELAY, pump12On ? HIGH : LOW);
+    esp.send("PUMP", pump12On ? 1 : 0);
+  }
+
+  unsigned long pump3Interval = pump3On ? PUMP3_ON_INTERVAL : PUMP3_OFF_INTERVAL;
+  if (now - pump3LastChange >= pump3Interval) {
+    pump3On = !pump3On;
+    pump3LastChange = now;
+    digitalWrite(PUMP3_RELAY, pump3On ? HIGH : LOW);
+  }
 }
 
 void runAutoControl() {
